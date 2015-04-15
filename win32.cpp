@@ -2,20 +2,15 @@
 #include <stdio.h>
 #include <tchar.h>
 
-static HANDLE hStdin, hStdout, hActiveBuffer, hBackBuffer;
-static int fdwSaveOldMode;
-static bool alive;
+#include "arl.h"
 
-short x = 9, y = 9;
+HANDLE hStdin, hStdout, hActiveBuffer, hBackBuffer;
+int fdwSaveOldMode;
+bool alive;
 
 void debug(wchar_t* outputString)
 {
-	OutputDebugString(outputString);
-}
-
-void debug(char* outputString)
-{
-	OutputDebugStringA(outputString);
+	OutputDebugStringW(outputString);
 }
 
 void debugf(const wchar_t* format, ...)
@@ -24,8 +19,13 @@ void debugf(const wchar_t* format, ...)
 	va_start(argp, format);
 	wchar_t buffer[512];
 	vswprintf_s(buffer, 512, format, argp);
-	OutputDebugString(buffer);
+	OutputDebugStringW(buffer);
 	va_end(argp);
+}
+
+void debug(char* outputString)
+{
+	OutputDebugStringA(outputString);
 }
 
 void debugf(const char* format, ...)
@@ -38,6 +38,7 @@ void debugf(const char* format, ...)
 	va_end(argp);
 }
 
+internal
 int win32_init()
 {
 	// Get a handle to the STDOUT screen buffer to copy from and 
@@ -97,74 +98,67 @@ int win32_init()
 	return 0;
 }
 
-VOID KeyEventProc(KEY_EVENT_RECORD ker)
+internal
+game_input* KeyEventProc(KEY_EVENT_RECORD ker, game_input* input)
 {
-	debugf("Key event: ");
-
-	if (ker.bKeyDown)
+	debugf("key %s '%c'\n", (ker.bKeyDown ? "pressed" : "released"), ker.uChar.AsciiChar);
+	switch (ker.wVirtualKeyCode)
 	{
-		debugf("key pressed '%c'\n", ker.uChar.AsciiChar);
-	}
-	else 
-	{
-		switch (ker.wVirtualKeyCode)
-		{
-		case 0x51:
-			alive = false;
+		case 'Q':
+			if (!ker.bKeyDown)
+			{
+				alive = false;
+				input->quit = true;
+			}
 			break;
 
 		case VK_DOWN:
-			y++;
+			input->yOffset = +1;
 			break;
 
 		case VK_UP:
-			y--;
+			input->yOffset = -1;
 			break;
 
 		case VK_LEFT:
-			x--;
+			input->xOffset = -1;
 			break;
 
 		case VK_RIGHT:
-			x++;
+			input->xOffset = +1;
 			break;
-
-		default:
-			debugf("key released '%c'\n", ker.uChar.AsciiChar);
-		}
 	}
+
+	return input;
 }
 
-int processInput()
+internal
+game_input readInput()
 {
-	DWORD cNumRead, i;
 	INPUT_RECORD irInBuf[128];
+	DWORD cNumRead;
 
-	if (!ReadConsoleInput(
+	ReadConsoleInput(
 		hStdin,      // input buffer handle 
 		irInBuf,     // buffer to read into 
 		128,         // size of read buffer 
-		&cNumRead))  // number of records read 
-	{
-		return 1;
-	}
+		&cNumRead);
 
-	for (i = 0; i < cNumRead; i++)
+	game_input input = {};
+	for (DWORD i = 0; i < cNumRead; i++)
 	{
 		switch (irInBuf[i].EventType)
 		{
 		case KEY_EVENT: // keyboard input 
-			KeyEventProc(irInBuf[i].Event.KeyEvent);
-			break;
-
-		default:
+			KeyEventProc(irInBuf[i].Event.KeyEvent, &input);
 			break;
 		}
 	}
 
-	return 0;
+	return input;
 }
 
+internal
 int beginRender()
 {
 	DWORD write;
@@ -172,6 +166,7 @@ int beginRender()
 	return 0;
 }
 
+internal
 int renderComplete()
 {
 	HANDLE hPreviousBuffer = hActiveBuffer;
@@ -183,72 +178,55 @@ int renderComplete()
 	return 0;
 }
 
+internal
 int win32_close()
 {
 	SetConsoleMode(hStdin, fdwSaveOldMode);	
 	return SetConsoleActiveScreenBuffer(hStdout);
 }
 
-int drawToBuffer(char *text)
+void 
+drawToBuffer(const char *text)
 {
 	COORD coordBufCoord = {}, coordBufSize = { 80, 2 };
-	SMALL_RECT srctWriteRect;
+	SMALL_RECT srctWriteRect = { 0, 0, 80, 2 };
 
-	CHAR_INFO chiBuffer[160]; 
-	memset(chiBuffer, 0, sizeof(chiBuffer));
+	CHAR_INFO textBuffer[160]; 
+	memset(textBuffer, 0, sizeof(textBuffer));
 
 	for (int i = 0; i < 160 && *text; i++, text++)
 	{
-		chiBuffer[i].Char.AsciiChar = *text;
-		chiBuffer[i].Attributes = 0xf7;
+		textBuffer[i].Char.AsciiChar = *text;
+		textBuffer[i].Attributes = 0x0f;
 	}
 
-	srctWriteRect.Top = 0;    // top lt: row 10, col 0 
-	srctWriteRect.Left = 0;
-	srctWriteRect.Bottom = 2; // bot. rt: row 11, col 79 
-	srctWriteRect.Right = 80;
-
-	// Copy from the temporary buffer to the new screen buffer. 
-	BOOL fSuccess = WriteConsoleOutput(
-		hBackBuffer,		// screen buffer to write to 
-		chiBuffer,			// buffer to copy from 
+	// Copy from the temporary textBuffer to the new screen textBuffer. 
+	WriteConsoleOutput(
+		hBackBuffer,		// screen textBuffer to write to 
+		textBuffer,			// textBuffer to copy from 
 		coordBufSize,		// col-row size of chiBuffer 
 		coordBufCoord,		// top left src cell in chiBuffer 
-		&srctWriteRect);	// dest. screen buffer rectangle 
-
-	if (fSuccess)
-	{
-		renderComplete();
-		return 0;
-	}
-
-	printf("WriteConsoleOutput failed - (%d)\n", GetLastError());
-	return 1;
+		&srctWriteRect);	// dest. screen textBuffer rectangle 
 }
 
-int drawCharAt(short x, short y, char c)
+void
+drawCharAt(const screen_coord pos, char c)
 {
 	CHAR_INFO chiBuffer = {};
 	chiBuffer.Attributes = 0x07;
 	chiBuffer.Char.AsciiChar = c;
 
-	SMALL_RECT writeRect;
-	writeRect.Left = x;
-	writeRect.Top = y;
-	writeRect.Bottom = y + 1;
-	writeRect.Right = x + 1;
-
+	SMALL_RECT writeRect = { pos.x, pos.y, pos.x + 1, pos.y + 1 };
 	WriteConsoleOutput(
 		hBackBuffer,
 		&chiBuffer,
 		{ 1, 1 },
 		{},
 		&writeRect);
-
-	return 0;
 }
 
-int _tmain()
+int 
+_tmain()
 {
 	if (win32_init())
 		return 1;
@@ -257,37 +235,11 @@ int _tmain()
 	while (alive)
 	{
 		beginRender();
-
-		bool bumpIntoWall = false;
-		if (x < 0)
-		{
-			x = 0;
-			bumpIntoWall = true;
-		}
-		if (y < 0)
-		{
-			y = 0;
-			bumpIntoWall = true;
-		}
-		if (y > 19)
-		{
-			y = 19;
-			bumpIntoWall = true;
-		}
-		if (x > 19)
-		{
-			x = 19;
-			bumpIntoWall = true;
-		}
-		if (bumpIntoWall)
-		{
-			drawToBuffer("You bumped into a wall");
-		}
-
-		drawCharAt(x + 30, y + 2, '@');
+		updateAndRender();
 		renderComplete();
 
-		processInput();
+		game_input input = readInput();
+		processInput(input);
 	}
 
 	win32_close();

@@ -25,4 +25,9 @@
   <ItemGroup>
     <Text Include="ReadMe.md" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="arl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
 </Project>
