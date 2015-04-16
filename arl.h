@@ -2,8 +2,8 @@
 
 #define internal static
 
-struct screen_coord {
-	short x, y;
+struct v2i {
+	int x, y;
 };
 
 struct game_input {
@@ -16,7 +16,7 @@ void updateAndRender();
 void processInput(const game_input input);
 
 void drawToBuffer(const char* text);
-void drawCharAt(const screen_coord pos, const char);
+void drawCharAt(const v2i pos, const char);
 
 void debug(wchar_t* outputString);
 void debug(char* outputString);

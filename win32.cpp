@@ -11,6 +11,7 @@ bool alive;
 void debug(wchar_t* outputString)
 {
 	OutputDebugStringW(outputString);
+	OutputDebugStringW(_T("\n"));
 }
 
 void debugf(const wchar_t* format, ...)
@@ -20,12 +21,14 @@ void debugf(const wchar_t* format, ...)
 	wchar_t buffer[512];
 	vswprintf_s(buffer, 512, format, argp);
 	OutputDebugStringW(buffer);
+	OutputDebugStringW(_T("\n"));
 	va_end(argp);
 }
 
 void debug(char* outputString)
 {
 	OutputDebugStringA(outputString);
+	OutputDebugStringA("\n");
 }
 
 void debugf(const char* format, ...)
@@ -35,6 +38,7 @@ void debugf(const char* format, ...)
 	va_start(argp, format);
 	vsprintf_s(buffer, 512, format, argp);
 	OutputDebugStringA(buffer);
+	OutputDebugStringA("\n");
 	va_end(argp);
 }
 
@@ -101,7 +105,18 @@ int win32_init()
 internal
 game_input* KeyEventProc(KEY_EVENT_RECORD ker, game_input* input)
 {
-	debugf("key %s '%c'\n", (ker.bKeyDown ? "pressed" : "released"), ker.uChar.AsciiChar);
+	if (ker.bKeyDown)
+		return input;
+
+	if (ker.uChar.AsciiChar >= '0' && ker.uChar.AsciiChar <= 'z')
+	{
+		debugf("key %s '%c'", (ker.bKeyDown ? "pressed" : "released"), ker.uChar.AsciiChar);
+	}
+	else
+	{
+		debugf("key %s '0x%x'", (ker.bKeyDown ? "pressed" : "released"), ker.wVirtualKeyCode);
+	}
+
 	switch (ker.wVirtualKeyCode)
 	{
 		case 'Q':
@@ -210,13 +225,13 @@ drawToBuffer(const char *text)
 }
 
 void
-drawCharAt(const screen_coord pos, char c)
+drawCharAt(const v2i pos, char c)
 {
 	CHAR_INFO chiBuffer = {};
 	chiBuffer.Attributes = 0x07;
 	chiBuffer.Char.AsciiChar = c;
 
-	SMALL_RECT writeRect = { pos.x, pos.y, pos.x + 1, pos.y + 1 };
+	SMALL_RECT writeRect = { (short)pos.x, (short)pos.y, (short)pos.x + 1, (short)pos.y + 1 };
 	WriteConsoleOutput(
 		hBackBuffer,
 		&chiBuffer,

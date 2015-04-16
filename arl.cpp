@@ -9,7 +9,7 @@ map_element map[] {
 	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
 	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
 	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
-	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
+	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 2 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
 	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
 	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
 	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
@@ -47,20 +47,20 @@ map_element map[] {
 #define MAP_X 25
 #define MAP_Y 37
 
-screen_coord screen_size = { 20, 10 };
-screen_coord charPos;
+v2i screen_size = { 20, 10 };
+v2i charPos;
 
 internal
-screen_coord toScreenCoord(screen_coord pos)
+v2i toScreenCoord(v2i pos)
 {
-	short xOffset = (80 - screen_size.x) / 2;
-	short yOffset = (25 - screen_size.y) / 2;
+	int xOffset = (80 - screen_size.x) / 2;
+	int yOffset = (25 - screen_size.y) / 2;
 
 	return { pos.x + xOffset, pos.y + yOffset };
 }
 
 internal
-bool clamp(screen_coord* pos, short x, short y)
+bool clamp(v2i* pos, int x, int y)
 {
 	bool clamped = false;
 
@@ -92,18 +92,27 @@ bool clamp(screen_coord* pos, short x, short y)
 }
 
 internal
-bool isOutOfBounds(screen_coord* pos)
+int getMapElement(int x, int y)
 {
-	return clamp(pos, MAP_X - 1, MAP_Y - 1);
+	return map[(y * MAP_X) + x].element_type;
+}
+
+internal
+int getMapElement(v2i pos)
+{
+	if (clamp(&pos, MAP_X, MAP_Y))
+		return -1;
+
+	return getMapElement(pos.x, pos.y);
 }
 
 internal void
 renderMap()
 {
-	screen_coord mapOffset = { charPos.x - (screen_size.x / 2), charPos.y - (screen_size.y / 2) };
+	v2i mapOffset = { charPos.x - (screen_size.x / 2), charPos.y - (screen_size.y / 2) };
 	clamp(&mapOffset, MAP_X - screen_size.x, MAP_Y - screen_size.y);
 
-	screen_coord p = {};
+	v2i p = {};
 	for (p.x = 0; p.x < screen_size.x; p.x++)
 		for (p.y = 0; p.y < screen_size.y; p.y++)
 		{
@@ -117,7 +126,22 @@ renderMap()
 			}
 			else
 			{
-				c = map[(y*MAP_X) + x].element_type ? '#' : '.';
+				int mapElement = getMapElement(x, y);
+				switch (mapElement)
+				{
+				case 0:
+					c = '.';
+					break;
+				case 2:
+					c = '/';
+					break;
+				case 3:
+					c = '=';
+					break;
+				default:
+					c = '#';
+					break;
+				}
 			}
 
 			drawCharAt(toScreenCoord(p), c);
@@ -127,19 +151,35 @@ renderMap()
 void
 updateAndRender()
 {
-	if (isOutOfBounds(&charPos))
-	{
-		drawToBuffer("You bumped into a wall");
-	}
-
 	renderMap();
+}
+
+internal
+int openDoor(v2i pos)
+{
+	if (clamp(&pos, MAP_X, MAP_Y))
+		return 0;
+
+	map[(pos.y * MAP_X) + pos.x].element_type = 3;
+	return 1;
 }
 
 void
 processInput(const game_input input)
 {
-	charPos.x += input.xOffset;
-	charPos.y += input.yOffset;
+	v2i new_pos = { charPos.x + input.xOffset, charPos.y + input.yOffset };
+	int mapElement = getMapElement(new_pos);
+	switch (mapElement)
+	{
+	case 1:
+		return;
+	case 2:
+		openDoor(new_pos);
+		return;
+	default:
+		charPos = new_pos;
+		break;
+	}
 }
 
 void
