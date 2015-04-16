@@ -231,6 +231,8 @@ _tmain()
 	if (win32_init())
 		return 1;
 
+	init_game();
+
 	alive = true;
 	while (alive)
 	{

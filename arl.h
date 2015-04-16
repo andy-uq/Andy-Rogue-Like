@@ -11,6 +11,7 @@ struct game_input {
 	bool quit;
 };
 
+void init_game();
 void updateAndRender();
 void processInput(const game_input input);
 
