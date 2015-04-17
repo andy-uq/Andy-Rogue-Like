@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <stdio.h>
+#include <stat.h>
 #include <tchar.h>
 
 #include "arl.h"
@@ -240,11 +241,64 @@ drawCharAt(const v2i pos, char c)
 		&writeRect);
 }
 
+struct {
+	int totalSize, transientSize;
+	void* base;
+	void* transient;
+} memory{ 1 << 20, 256 << 10 };
+
+
+void*
+allocate(size_t size)
+{
+
+}
+
+
+
+struct file_t
+{
+	char* contents;
+	int size;
+};
+
+
+int
+readFile(const char* filename, file_t** file)
+{
+	FILE* fs = fopen(filename, "rb");
+	if (!fs)
+		0;
+
+	struct stat st;
+	stat(filename, &st);
+	long size = st.st_size;
+
+	void* fileBuffer = VirtualAlloc(0, size + sizeof(file_t), MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+	(*file) = (file_t*)fileBuffer;
+	(*file)->size = size;
+	(*file)->contents = (char* )(*file + sizeof(file_t));
+
+	return 1;
+}
+
+void freeFile(file_t* file) 
+{
+	if (file)
+	{
+		VirtualFree(file, 0, MEM_RELEASE);
+	}
+}
+
 int 
 _tmain()
 {
 	if (win32_init())
 		return 1;
+
+	LPVOID BaseAddress = (LPVOID)(2<<40);
+	memory.base = VirtualAlloc(BaseAddress, memory.totalSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+	memory.transient = (void* )((char* )memory.base + (memory.totalSize - memory.transientSize));
 
 	init_game();
 
