@@ -1,6 +1,6 @@
 #include <windows.h>
 #include <stdio.h>
-#include <stat.h>
+#include <sys/stat.h>
 #include <tchar.h>
 
 #include "arl.h"
@@ -247,45 +247,62 @@ struct {
 	void* transient;
 } memory{ 1 << 20, 256 << 10 };
 
+struct {
+	void* head;
+} alloced;
 
 void*
 allocate(size_t size)
 {
-
+	void* alloc = alloced.head;
+	alloced.head = (char* )alloced.head + size;
+	return alloc;
 }
 
-
-
-struct file_t
+struct win32_file_t
 {
-	char* contents;
-	int size;
+	file_t fileInfo;
+	FILE* fs;
+	char* readBuffer;
 };
 
+#define READBUFFERSIZE (8 * (1 << 10))
 
 int
 readFile(const char* filename, file_t** file)
 {
-	FILE* fs = fopen(filename, "rb");
-	if (!fs)
-		0;
+	FILE* fs;
+	if (fopen_s(&fs, filename, "rb"))
+		return 0;
 
 	struct stat st;
 	stat(filename, &st);
 	long size = st.st_size;
 
-	void* fileBuffer = VirtualAlloc(0, size + sizeof(file_t), MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-	(*file) = (file_t*)fileBuffer;
-	(*file)->size = size;
-	(*file)->contents = (char* )(*file + sizeof(file_t));
-
+	win32_file_t* win32_file = (win32_file_t* )VirtualAlloc(0, sizeof(win32_file_t) +  READBUFFERSIZE, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+	win32_file->fileInfo.size = size;
+	win32_file->fs = fs;
+	win32_file->readBuffer = ((char*)win32_file) + sizeof(win32_file_t);
+	
+	(*file) = (file_t* )win32_file;
 	return 1;
 }
 
-void freeFile(file_t* file) 
+char* 
+readLine(file_t* file)
+{
+	win32_file_t* win32_file = (win32_file_t*)file;
+	return fgets(win32_file->readBuffer, READBUFFERSIZE, win32_file->fs);
+}
+
+void 
+freeFile(file_t* file) 
 {
 	if (file)
 	{
+		win32_file_t* win32_file = (win32_file_t*)file;
+		fclose(win32_file->fs);
+
 		VirtualFree(file, 0, MEM_RELEASE);
 	}
 }
@@ -296,9 +313,10 @@ _tmain()
 	if (win32_init())
 		return 1;
 
-	LPVOID BaseAddress = (LPVOID)(2<<40);
+	LPVOID BaseAddress = (LPVOID)(2LL<<40);
 	memory.base = VirtualAlloc(BaseAddress, memory.totalSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 	memory.transient = (void* )((char* )memory.base + (memory.totalSize - memory.transientSize));
+	alloced.head = memory.base;
 
 	init_game();
 
