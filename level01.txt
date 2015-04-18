@@ -1,0 +1,3 @@
+# Level v1.0
+MAP=map01.txt
+# EOF

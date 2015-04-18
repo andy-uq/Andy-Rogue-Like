@@ -25,9 +25,17 @@ struct level_t
 	v2i size;
 };
 
+struct monster_t
+{
+	char glyph;
+	v2i position;
+};
+
 v2i _screenSize = { 20, 10 };
 
 v2i _charPos;
+monster_t* _mobs;
+
 level_t* _currentLevel;
 
 internal
@@ -72,16 +80,16 @@ bool clamp(v2i* pos, int x, int y)
 }
 
 internal
-int getMapElement(level_t* map, int x, int y)
+elementType_t getMapElement(level_t* map, int x, int y)
 {
 	return map->data[(y * map->size.x) + x].type;
 }
 
 internal
-int getMapElement(level_t* map, v2i pos)
+elementType_t getMapElement(level_t* map, v2i pos)
 {
 	if (clamp(&pos, map->size.x, map->size.y))
-		return -1;
+		return (elementType_t )-1;
 
 	return getMapElement(map, pos.x, pos.y);
 }
@@ -127,6 +135,15 @@ renderMap(level_t* map)
 
 			drawCharAt(toScreenCoord(p), c);
 		}
+
+	for (monster_t* m = _mobs; m->glyph; m++)
+	{
+		v2i xy = { m->position.x - mapOffset.x, m->position.y - mapOffset.y };
+		if (clamp(&xy, _screenSize.x, _screenSize.y))
+			continue;
+
+		drawCharAt(toScreenCoord(xy), m->glyph);
+	}
 }
 
 void
@@ -208,6 +225,37 @@ bool isDoor(mapElement_t* e)
 		|| e->type == OPEN_DOOR;
 }
 
+internal void saveDoors(file_t* saveGame)
+{
+	writeFileComment(saveGame, "DOORS");
+
+	int doorId = 1;
+	for (mapElement_t* p = _currentLevel->data; p->type != END_OF_MAP; p++)
+	{
+		if (isDoor(p))
+		{
+			writeFileKeyValue(saveGame, "DOOR", "%d %s", doorId, (p->type == DOOR) ? "CLOSED" : "OPEN");
+			doorId++;
+		}
+	}
+
+	writeFileComment(saveGame, "END_DOORS");
+}
+
+internal void saveMonsters(file_t* saveGame)
+{
+	writeFileComment(saveGame, "MONSTERS");
+
+	int monsterId = 1;
+	for (monster_t* m = _mobs; m->glyph; m++)
+	{
+		writeFileKeyValue(saveGame, "MONSTER", "%d %d %d", monsterId, m->position.x, m->position.y);
+		monsterId++;
+	}
+
+	writeFileComment(saveGame, "MONSTERS");
+}
+
 internal
 void saveGame()
 {
@@ -219,25 +267,44 @@ void saveGame()
 	writeFileKeyValue(saveGame, "POS_X", "%d", _charPos.x);
 	writeFileKeyValue(saveGame, "POS_Y", "%d", _charPos.y);
 
-	writeFileComment(saveGame, "DOORS");
-
-	int doorId = 1;
-	mapElement_t* p = _currentLevel->data;
-	while (p->type != END_OF_MAP)
-	{
-		if (isDoor(p))
-		{
-			writeFileKeyValue(saveGame, "DOOR", "%d %s", doorId, (p->type == DOOR) ? "CLOSED" : "OPEN");
-			doorId++;
-		}
-
-		p++;
-	}
-
-	writeFileComment(saveGame, "END_DOORS");
+	saveDoors(saveGame);
+	saveMonsters(saveGame);
 
 	writeFileComment(saveGame, "EOF");
 	freeFile(saveGame);
+}
+
+int sRandom = 1337;
+
+internal
+void moveMob(v2i* m)
+{
+	v2i newPos = *m;
+
+	sRandom *= 113;
+
+	if (sRandom % 11 == 0) newPos.y--;
+	else if (sRandom % 7 == 1) newPos.y++;
+	else if (sRandom % 5 == 2) newPos.x--;
+	else if (sRandom % 3 == 3) newPos.x++;
+
+	if (clamp(&newPos, _currentLevel->size.x, _currentLevel->size.y))
+		return;
+
+	elementType_t mapElement = getMapElement(_currentLevel, newPos);
+	if (mapElement == OPEN_DOOR || mapElement == FLOOR)
+	{
+		*m = newPos;
+	}
+}
+
+internal
+void moveMobs()
+{
+	for (monster_t* m = _mobs; m->glyph; m++)
+	{
+		moveMob(&m->position);
+	}
 }
 
 void
@@ -257,6 +324,7 @@ processInput(const game_input input)
 		break;
 	}
 
+	moveMobs();
 	saveGame();
 }
 
@@ -336,6 +404,7 @@ int parseKeyValue(char* line, ParseKey* parseFuncs)
 
 	return 0;
 }
+
 int parseIntValue(const char* target, const char* key, const char* value, void(*applyFunc)(int))
 {
 	if (_stricmp(target, key))
@@ -386,6 +455,43 @@ bool endsWith(const char* target, const char* compareTo)
 	return true;
 }
 
+int nextInt(const char** value)
+{
+	const char* p = *value;
+	while (*p >= '0' && *p <= '9')
+		p++;
+
+	while (*p == ' ' || *p == '\t')
+		p++;
+
+	*value = p;
+	return atoi(p);
+}
+
+internal
+int monster(const char* key, const char* value)
+{
+	if (_stricmp("monster", key))
+		return 0;
+
+	int targetId = atoi(value);
+	int monsterId = 1;
+	for (monster_t* m = _mobs; m->glyph; m++)
+	{
+		if (monsterId == targetId)
+		{
+			m->position.x = nextInt(&value);
+			m->position.y = nextInt(&value);
+			return 1;
+		}
+
+		monsterId++;
+	}
+
+	return 1;
+}
+
+internal
 int door(const char* key, const char* value)
 {
 	if (_stricmp("door", key))
@@ -430,6 +536,7 @@ void loadSaveGame()
 		posX,
 		posY,
 		door,
+		monster,
 		0
 	};
 
@@ -448,18 +555,18 @@ void loadSaveGame()
 }
 
 internal
-level_t* readMap(const char* filename) 
+int readMap(const char* filename, level_t* level) 
 {
 	file_t* file;
 	if (!openFileForRead(filename, &file))
-		return NULL;
+		return 0;
 
-	void* memory = allocate(sizeof(level_t) + (file->size + 1) * sizeof(mapElement_t));
-	_currentLevel = (level_t*)memory;
-	_currentLevel->data = (mapElement_t*)(((char* )memory) + sizeof(level_t));
+	void* memory = allocate((file->size + 1) * sizeof(mapElement_t));
+	level->data = ( mapElement_t* )memory;
 	
+	mapElement_t* ptr = level->data;
+
 	char* line;
-	mapElement_t* ptr = _currentLevel->data;
 	while ((line = readLine(file)) != NULL)
 	{
 		int xOffset = 0;
@@ -479,7 +586,7 @@ level_t* readMap(const char* filename)
 				break;
 			case '@':
 				_charPos.x = xOffset;
-				_charPos.y = _currentLevel->size.y;
+				_charPos.y = level->size.y;
 				break;
 			}
 
@@ -488,21 +595,85 @@ level_t* readMap(const char* filename)
 			ptr++;
 		}
 
-		_currentLevel->size.y++;
-		if (xOffset > _currentLevel->size.x)
-			_currentLevel->size.x = xOffset;
+		level->size.y++;
+		if (xOffset > level->size.x)
+			level->size.x = xOffset;
 	}
 
 	ptr->type = END_OF_MAP;
 
 	freeFile(file);
-	return _currentLevel;
+	return 1;
+}
+
+internal
+bool parseKey(char* buffer, const char* key, char** value)
+{
+	while (*buffer)
+	{
+		if (*key == 0)
+		{
+			*value = buffer + 1;
+			return true;
+		}
+
+		if (*buffer != *key)
+			break;
+
+		buffer++;
+		key++;
+	}
+
+	return false;
+}
+
+internal
+level_t* readLevel(level_t* level)
+{
+	file_t* file;
+	if (!openFileForRead(level->filename, &file))
+		return 0;
+
+	const char* line;
+	char buffer_[512];
+	char* buffer = buffer_;
+
+	while ((line = readLine(file)) != NULL)
+	{
+		strncpy_s(buffer, 512, line, _TRUNCATE);
+		trim(&buffer);
+
+		if (buffer[0] == '#')
+			continue;
+
+		char* value;
+		if (parseKey(buffer, "MAP", &value))
+		{
+			if (!readMap(value, level))
+				return NULL;
+
+			continue;
+		}
+		
+		if (parseKey(buffer, "MONSTER", &value))
+		{
+		}
+	}
+
+	freeFile(file);
+	return level;
 }
 
 void
 init_game()
 {
 	_charPos = { 1, 1 };
-	_currentLevel = readMap("map01.txt");
+	_mobs = (monster_t *)allocate(sizeof(monster_t)*10);
+	_mobs[0] = { 'M', {1, 1} };
+	_mobs[1] = { 'M', {37, 17} };
+	_mobs[2].glyph = 0;
+
+	static level_t level = { "level01.txt" };
+	_currentLevel = readLevel(&level);
 	loadSaveGame();
 }
