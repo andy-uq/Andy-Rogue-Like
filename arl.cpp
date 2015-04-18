@@ -4,6 +4,13 @@ struct map_element {
 	int element_type;
 };
 
+struct level {
+	map_element* data;
+	v2i size;
+};
+
+
+#if 0
 map_element map[] {
 	{ 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 },
 	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
@@ -43,12 +50,11 @@ map_element map[] {
 	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
 	{ 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 },
 };
-
-#define MAP_X 25
-#define MAP_Y 37
+#endif
 
 v2i screen_size = { 20, 10 };
 v2i charPos;
+level* currentLevel;
 
 internal
 v2i toScreenCoord(v2i pos)
@@ -92,25 +98,25 @@ bool clamp(v2i* pos, int x, int y)
 }
 
 internal
-int getMapElement(int x, int y)
+int getMapElement(level* map, int x, int y)
 {
-	return map[(y * MAP_X) + x].element_type;
+	return map->data[(y * map->size.x) + x].element_type;
 }
 
 internal
-int getMapElement(v2i pos)
+int getMapElement(level* map, v2i pos)
 {
-	if (clamp(&pos, MAP_X, MAP_Y))
+	if (clamp(&pos, map->size.x, map->size.y))
 		return -1;
 
-	return getMapElement(pos.x, pos.y);
+	return getMapElement(map, pos.x, pos.y);
 }
 
 internal void
-renderMap()
+renderMap(level* map)
 {
 	v2i mapOffset = { charPos.x - (screen_size.x / 2), charPos.y - (screen_size.y / 2) };
-	clamp(&mapOffset, MAP_X - screen_size.x, MAP_Y - screen_size.y);
+	clamp(&mapOffset, map->size.x - screen_size.x, map->size.y - screen_size.y);
 
 	v2i p = {};
 	for (p.x = 0; p.x < screen_size.x; p.x++)
@@ -126,7 +132,7 @@ renderMap()
 			}
 			else
 			{
-				int mapElement = getMapElement(x, y);
+				int mapElement = getMapElement(map, x, y);
 				switch (mapElement)
 				{
 				case 0:
@@ -151,16 +157,16 @@ renderMap()
 void
 updateAndRender()
 {
-	renderMap();
+	renderMap(currentLevel);
 }
 
 internal
-int openDoor(v2i pos)
+int openDoor(level* map, v2i pos)
 {
-	if (clamp(&pos, MAP_X, MAP_Y))
+	if (clamp(&pos, map->size.x, map->size.y))
 		return 0;
 
-	map[(pos.y * MAP_X) + pos.x].element_type = 3;
+	map->data[(pos.y * map->size.x) + pos.x].element_type = 3;
 	return 1;
 }
 
@@ -168,13 +174,13 @@ void
 processInput(const game_input input)
 {
 	v2i new_pos = { charPos.x + input.xOffset, charPos.y + input.yOffset };
-	int mapElement = getMapElement(new_pos);
+	int mapElement = getMapElement(currentLevel, new_pos);
 	switch (mapElement)
 	{
 	case 1:
 		return;
 	case 2:
-		openDoor(new_pos);
+		openDoor(currentLevel, new_pos);
 		return;
 	default:
 		charPos = new_pos;
@@ -182,8 +188,58 @@ processInput(const game_input input)
 	}
 }
 
+level* readMap(const char* filename) 
+{
+	file_t* file;
+	if (!readFile(filename, &file))
+		return NULL;
+
+	void* memory = allocate(sizeof(level) + file->size);
+	currentLevel = (level*)memory;
+	currentLevel->data = (map_element*)(((char* )memory) + sizeof(level));
+	
+	char* line;
+	map_element* ptr = currentLevel->data;
+	while ((line = readLine(file)) != NULL)
+	{
+		int xOffset = 0;
+		while (*line)
+		{
+			*ptr = {};
+			switch (*line)
+			{
+			case '#':
+				ptr->element_type = 1;
+				break;
+			case '/':
+				ptr->element_type = 2;
+				break;
+			case '=':
+				ptr->element_type = 3;
+				break;
+			case '@':
+				charPos.x = xOffset;
+				charPos.y = currentLevel->size.y;
+				break;
+			}
+
+			line++;
+			xOffset++;
+			ptr++;
+		}
+
+		currentLevel->size.y++;
+		if (xOffset > currentLevel->size.x)
+			currentLevel->size.x = xOffset;
+	}
+
+	freeFile(file);
+	return currentLevel;
+}
+
 void
 init_game()
 {
 	charPos = { 1, 1 };
+	currentLevel = readMap("map01.txt");
 }

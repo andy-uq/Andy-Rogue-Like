@@ -2,6 +2,8 @@
 
 #define internal static
 
+#define NULL 0
+
 struct v2i {
 	int x, y;
 };
@@ -22,3 +24,14 @@ void debug(wchar_t* outputString);
 void debug(char* outputString);
 void debugf(const wchar_t* format, ...);
 void debugf(const char* format, ...);
+
+struct file_t
+{
+	int size;
+};
+
+int readFile(const char* filename, file_t** file);
+char* readLine(file_t* file);
+void freeFile(file_t* file);
+
+void* allocate(size_t size);
