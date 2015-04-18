@@ -5,9 +5,29 @@
 
 #include "arl.h"
 
-HANDLE hStdin, hStdout, hActiveBuffer, hBackBuffer;
-int fdwSaveOldMode;
-bool alive;
+HANDLE _hStdin, _hStdout, _hActiveBuffer, _hBackBuffer;
+int _fdwSaveOldMode;
+bool _alive;
+
+struct {
+	int totalSize, transientSize;
+	void* base;
+	void* transient;
+} _memory { 1 << 20, 256 << 10 };
+
+struct {
+	void* head;
+} _alloced;
+
+
+struct win32_file_t
+{
+	file_t fileInfo;
+	FILE* fs;
+	char* readBuffer;
+};
+
+#define READBUFFERSIZE (8 * (1 << 10))
 
 void debug(wchar_t* outputString)
 {
@@ -49,8 +69,8 @@ int win32_init()
 	// Get a handle to the STDOUT screen buffer to copy from and 
 	// create a new screen buffer to copy to. 
 
-	hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
-	hBackBuffer = CreateConsoleScreenBuffer(
+	_hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
+	_hBackBuffer = CreateConsoleScreenBuffer(
 		GENERIC_READ | GENERIC_WRITE,				// read/write access
 		FILE_SHARE_READ | FILE_SHARE_WRITE,			// shared 
 		NULL,										// default security attributes 
@@ -58,7 +78,7 @@ int win32_init()
 		NULL										// reserved; must be NULL 
 		);
 
-	hActiveBuffer = CreateConsoleScreenBuffer(
+	_hActiveBuffer = CreateConsoleScreenBuffer(
 		GENERIC_READ | GENERIC_WRITE,				// read/write access
 		FILE_SHARE_READ | FILE_SHARE_WRITE, 		// shared 
 		NULL, 										// default security attributes 
@@ -66,7 +86,7 @@ int win32_init()
 		NULL 										// reserved; must be NULL 
 		);
 
-	if (hStdout == INVALID_HANDLE_VALUE || hActiveBuffer == INVALID_HANDLE_VALUE || hBackBuffer == INVALID_HANDLE_VALUE)
+	if (_hStdout == INVALID_HANDLE_VALUE || _hActiveBuffer == INVALID_HANDLE_VALUE || _hBackBuffer == INVALID_HANDLE_VALUE)
 	{
 		debugf("CreateConsoleScreenBuffer failed - (%d)\n", GetLastError());
 		return 1;
@@ -74,21 +94,21 @@ int win32_init()
 
 	// Make the new screen buffer the active screen buffer. 
 
-	if (!SetConsoleActiveScreenBuffer(hActiveBuffer))
+	if (!SetConsoleActiveScreenBuffer(_hActiveBuffer))
 	{
 		debugf("SetConsoleActiveScreenBuffer failed - (%d)\n", GetLastError());
 		return 1;
 	}
 
-	hStdin = GetStdHandle(STD_INPUT_HANDLE);
-	if (hStdin == INVALID_HANDLE_VALUE)
+	_hStdin = GetStdHandle(STD_INPUT_HANDLE);
+	if (_hStdin == INVALID_HANDLE_VALUE)
 	{
 		debugf("GetStdHandle failed - (%d)\n", GetLastError());
 		return 1;
 	}
 
 	int fdwMode = 0;
-	if (!SetConsoleMode(hStdin, fdwMode))
+	if (!SetConsoleMode(_hStdin, fdwMode))
 	{
 		debugf("SetConsoleMode failed - (%d)\n", GetLastError());
 		return 1;
@@ -98,8 +118,8 @@ int win32_init()
 	cursorInfo.bVisible = false;
 	cursorInfo.dwSize = 100;
 
-	SetConsoleCursorInfo(hActiveBuffer, &cursorInfo);
-	SetConsoleCursorInfo(hBackBuffer, &cursorInfo);
+	SetConsoleCursorInfo(_hActiveBuffer, &cursorInfo);
+	SetConsoleCursorInfo(_hBackBuffer, &cursorInfo);
 	return 0;
 }
 
@@ -123,7 +143,7 @@ game_input* KeyEventProc(KEY_EVENT_RECORD ker, game_input* input)
 		case 'Q':
 			if (!ker.bKeyDown)
 			{
-				alive = false;
+				_alive = false;
 				input->quit = true;
 			}
 			break;
@@ -155,7 +175,7 @@ game_input readInput()
 	DWORD cNumRead;
 
 	ReadConsoleInput(
-		hStdin,      // input buffer handle 
+		_hStdin,      // input buffer handle 
 		irInBuf,     // buffer to read into 
 		128,         // size of read buffer 
 		&cNumRead);
@@ -178,18 +198,18 @@ internal
 int beginRender()
 {
 	DWORD write;
-	FillConsoleOutputCharacter(hBackBuffer, _T(' '), 80 * 25, {}, &write);
+	FillConsoleOutputCharacter(_hBackBuffer, _T(' '), 80 * 25, {}, &write);
 	return 0;
 }
 
 internal
 int renderComplete()
 {
-	HANDLE hPreviousBuffer = hActiveBuffer;
-	hActiveBuffer = hBackBuffer;
+	HANDLE hPreviousBuffer = _hActiveBuffer;
+	_hActiveBuffer = _hBackBuffer;
 	
-	SetConsoleActiveScreenBuffer(hActiveBuffer);
-	hBackBuffer = hPreviousBuffer;
+	SetConsoleActiveScreenBuffer(_hActiveBuffer);
+	_hBackBuffer = hPreviousBuffer;
 
 	return 0;
 }
@@ -197,8 +217,8 @@ int renderComplete()
 internal
 int win32_close()
 {
-	SetConsoleMode(hStdin, fdwSaveOldMode);	
-	return SetConsoleActiveScreenBuffer(hStdout);
+	SetConsoleMode(_hStdin, _fdwSaveOldMode);	
+	return SetConsoleActiveScreenBuffer(_hStdout);
 }
 
 void 
@@ -218,7 +238,7 @@ drawToBuffer(const char *text)
 
 	// Copy from the temporary textBuffer to the new screen textBuffer. 
 	WriteConsoleOutput(
-		hBackBuffer,		// screen textBuffer to write to 
+		_hBackBuffer,		// screen textBuffer to write to 
 		textBuffer,			// textBuffer to copy from 
 		coordBufSize,		// col-row size of chiBuffer 
 		coordBufCoord,		// top left src cell in chiBuffer 
@@ -234,39 +254,20 @@ drawCharAt(const v2i pos, char c)
 
 	SMALL_RECT writeRect = { (short)pos.x, (short)pos.y, (short)pos.x + 1, (short)pos.y + 1 };
 	WriteConsoleOutput(
-		hBackBuffer,
+		_hBackBuffer,
 		&chiBuffer,
 		{ 1, 1 },
 		{},
 		&writeRect);
 }
 
-struct {
-	int totalSize, transientSize;
-	void* base;
-	void* transient;
-} memory{ 1 << 20, 256 << 10 };
-
-struct {
-	void* head;
-} alloced;
-
 void*
 allocate(size_t size)
 {
-	void* alloc = alloced.head;
-	alloced.head = (char* )alloced.head + size;
+	void* alloc = _alloced.head;
+	_alloced.head = (char* )_alloced.head + size;
 	return alloc;
 }
-
-struct win32_file_t
-{
-	file_t fileInfo;
-	FILE* fs;
-	char* readBuffer;
-};
-
-#define READBUFFERSIZE (8 * (1 << 10))
 
 int
 readFile(const char* filename, file_t** file)
@@ -314,14 +315,14 @@ _tmain()
 		return 1;
 
 	LPVOID BaseAddress = (LPVOID)(2LL<<40);
-	memory.base = VirtualAlloc(BaseAddress, memory.totalSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-	memory.transient = (void* )((char* )memory.base + (memory.totalSize - memory.transientSize));
-	alloced.head = memory.base;
+	_memory.base = VirtualAlloc(BaseAddress, _memory.totalSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+	_memory.transient = (void* )((char* )_memory.base + (_memory.totalSize - _memory.transientSize));
+	_alloced.head = _memory.base;
 
 	init_game();
 
-	alive = true;
-	while (alive)
+	_alive = true;
+	while (_alive)
 	{
 		beginRender();
 		updateAndRender();

@@ -1,66 +1,30 @@
 #include "arl.h"
 
-struct map_element {
-	int element_type;
+enum elementType_t {
+	FLOOR,
+	WALL,
+	DOOR,
+	OPEN_DOOR,
 };
 
-struct level {
-	map_element* data;
+struct mapElement_t {
+	elementType_t type;
+};
+
+struct level_t {
+	mapElement_t* data;
 	v2i size;
 };
 
-
-#if 0
-map_element map[] {
-	{ 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 },
-	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
-	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
-	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
-	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 2 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
-	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
-	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
-	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
-	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
-	{ 1 }, { 1 }, { 1 }, { 0 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 0 }, { 1 }, { 1 }, { 1 }, { 1 }, { 0 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 0 }, { 1 }, { 1 },
-	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
-	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
-	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
-	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
-	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
-	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
-	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
-	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
-	{ 1 }, { 1 }, { 1 }, { 0 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 },
-	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
-	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
-	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
-	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
-	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
-	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
-	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
-	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
-	{ 1 }, { 1 }, { 1 }, { 0 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 0 }, { 1 }, { 1 }, { 1 }, { 1 }, { 0 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 0 }, { 1 }, { 1 },
-	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
-	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
-	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
-	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
-	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
-	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
-	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
-	{ 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 }, { 0 }, { 0 }, { 0 }, { 0 }, { 0 }, { 1 },
-	{ 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 }, { 1 },
-};
-#endif
-
-v2i screen_size = { 20, 10 };
-v2i charPos;
-level* currentLevel;
+v2i _screenSize = { 20, 10 };
+v2i _charPos;
+level_t* _currentLevel;
 
 internal
 v2i toScreenCoord(v2i pos)
 {
-	int xOffset = (80 - screen_size.x) / 2;
-	int yOffset = (25 - screen_size.y) / 2;
+	int xOffset = (80 - _screenSize.x) / 2;
+	int yOffset = (25 - _screenSize.y) / 2;
 
 	return { pos.x + xOffset, pos.y + yOffset };
 }
@@ -98,13 +62,13 @@ bool clamp(v2i* pos, int x, int y)
 }
 
 internal
-int getMapElement(level* map, int x, int y)
+int getMapElement(level_t* map, int x, int y)
 {
-	return map->data[(y * map->size.x) + x].element_type;
+	return map->data[(y * map->size.x) + x].type;
 }
 
 internal
-int getMapElement(level* map, v2i pos)
+int getMapElement(level_t* map, v2i pos)
 {
 	if (clamp(&pos, map->size.x, map->size.y))
 		return -1;
@@ -113,20 +77,20 @@ int getMapElement(level* map, v2i pos)
 }
 
 internal void
-renderMap(level* map)
+renderMap(level_t* map)
 {
-	v2i mapOffset = { charPos.x - (screen_size.x / 2), charPos.y - (screen_size.y / 2) };
-	clamp(&mapOffset, map->size.x - screen_size.x, map->size.y - screen_size.y);
+	v2i mapOffset = { _charPos.x - (_screenSize.x / 2), _charPos.y - (_screenSize.y / 2) };
+	clamp(&mapOffset, map->size.x - _screenSize.x, map->size.y - _screenSize.y);
 
 	v2i p = {};
-	for (p.x = 0; p.x < screen_size.x; p.x++)
-		for (p.y = 0; p.y < screen_size.y; p.y++)
+	for (p.x = 0; p.x < _screenSize.x; p.x++)
+		for (p.y = 0; p.y < _screenSize.y; p.y++)
 		{
 			int x = p.x + mapOffset.x;
 			int y = p.y + mapOffset.y;
 
 			char c;
-			if (charPos.x == x && charPos.y == y)
+			if (_charPos.x == x && _charPos.y == y)
 			{
 				c = '@';
 			}
@@ -135,15 +99,16 @@ renderMap(level* map)
 				int mapElement = getMapElement(map, x, y);
 				switch (mapElement)
 				{
-				case 0:
+				case FLOOR:
 					c = '.';
 					break;
-				case 2:
+				case DOOR:
 					c = '/';
 					break;
-				case 3:
+				case OPEN_DOOR:
 					c = '=';
 					break;
+				case WALL:
 				default:
 					c = '#';
 					break;
@@ -157,49 +122,50 @@ renderMap(level* map)
 void
 updateAndRender()
 {
-	renderMap(currentLevel);
+	renderMap(_currentLevel);
 }
 
 internal
-int openDoor(level* map, v2i pos)
+int openDoor(level_t* map, v2i pos)
 {
 	if (clamp(&pos, map->size.x, map->size.y))
 		return 0;
 
-	map->data[(pos.y * map->size.x) + pos.x].element_type = 3;
+	map->data[(pos.y * map->size.x) + pos.x].type = OPEN_DOOR;
 	return 1;
 }
 
 void
 processInput(const game_input input)
 {
-	v2i new_pos = { charPos.x + input.xOffset, charPos.y + input.yOffset };
-	int mapElement = getMapElement(currentLevel, new_pos);
+	v2i new_pos = { _charPos.x + input.xOffset, _charPos.y + input.yOffset };
+	int mapElement = getMapElement(_currentLevel, new_pos);
 	switch (mapElement)
 	{
 	case 1:
 		return;
 	case 2:
-		openDoor(currentLevel, new_pos);
+		openDoor(_currentLevel, new_pos);
 		return;
 	default:
-		charPos = new_pos;
+		_charPos = new_pos;
 		break;
 	}
 }
 
-level* readMap(const char* filename) 
+internal
+level_t* readMap(const char* filename) 
 {
 	file_t* file;
 	if (!readFile(filename, &file))
 		return NULL;
 
-	void* memory = allocate(sizeof(level) + file->size);
-	currentLevel = (level*)memory;
-	currentLevel->data = (map_element*)(((char* )memory) + sizeof(level));
+	void* memory = allocate(sizeof(level_t) + file->size);
+	_currentLevel = (level_t*)memory;
+	_currentLevel->data = (mapElement_t*)(((char* )memory) + sizeof(level_t));
 	
 	char* line;
-	map_element* ptr = currentLevel->data;
+	mapElement_t* ptr = _currentLevel->data;
 	while ((line = readLine(file)) != NULL)
 	{
 		int xOffset = 0;
@@ -209,17 +175,17 @@ level* readMap(const char* filename)
 			switch (*line)
 			{
 			case '#':
-				ptr->element_type = 1;
+				ptr->type = WALL;
 				break;
 			case '/':
-				ptr->element_type = 2;
+				ptr->type = DOOR;
 				break;
 			case '=':
-				ptr->element_type = 3;
+				ptr->type = OPEN_DOOR;
 				break;
 			case '@':
-				charPos.x = xOffset;
-				charPos.y = currentLevel->size.y;
+				_charPos.x = xOffset;
+				_charPos.y = _currentLevel->size.y;
 				break;
 			}
 
@@ -228,18 +194,18 @@ level* readMap(const char* filename)
 			ptr++;
 		}
 
-		currentLevel->size.y++;
-		if (xOffset > currentLevel->size.x)
-			currentLevel->size.x = xOffset;
+		_currentLevel->size.y++;
+		if (xOffset > _currentLevel->size.x)
+			_currentLevel->size.x = xOffset;
 	}
 
 	freeFile(file);
-	return currentLevel;
+	return _currentLevel;
 }
 
 void
 init_game()
 {
-	charPos = { 1, 1 };
-	currentLevel = readMap("map01.txt");
+	_charPos = { 1, 1 };
+	_currentLevel = readMap("map01.txt");
 }
