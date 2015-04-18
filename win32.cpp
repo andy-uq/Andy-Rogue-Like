@@ -17,17 +17,18 @@ struct {
 
 struct {
 	void* head;
-} _alloced;
+} _alloced, _transient;
 
 
 struct win32_file_t
 {
 	file_t fileInfo;
 	FILE* fs;
-	char* readBuffer;
+	char* buffer;
 };
 
 #define READBUFFERSIZE (8 * (1 << 10))
+#define WRITEBUFFERSIZE (8 * (1 << 10))
 
 void debug(wchar_t* outputString)
 {
@@ -269,8 +270,38 @@ allocate(size_t size)
 	return alloc;
 }
 
+void*
+allocateTransient(size_t size)
+{
+	void* alloc = _transient.head;
+	_transient.head = (char* )_transient.head + size;
+	return alloc;
+}
+
+void
+resetTransient()
+{
+	_transient.head = _memory.transient;
+}
+
 int
-readFile(const char* filename, file_t** file)
+openFileForWrite(const char* filename, file_t** file)
+{
+	FILE* fs;
+	if (fopen_s(&fs, filename, "wb"))
+		return 0;
+
+	win32_file_t* win32_file = (win32_file_t* )allocateTransient(sizeof(win32_file_t));
+	win32_file->fileInfo.size = 0;
+	win32_file->fs = fs;
+	win32_file->buffer = ((char*)win32_file) + sizeof(win32_file_t);
+
+	(*file) = (file_t*)win32_file;
+	return 1;
+}
+
+int
+openFileForRead(const char* filename, file_t** file)
 {
 	FILE* fs;
 	if (fopen_s(&fs, filename, "rb"))
@@ -280,31 +311,38 @@ readFile(const char* filename, file_t** file)
 	stat(filename, &st);
 	long size = st.st_size;
 
-	win32_file_t* win32_file = (win32_file_t* )VirtualAlloc(0, sizeof(win32_file_t) +  READBUFFERSIZE, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+	win32_file_t* win32_file = (win32_file_t*)allocateTransient(sizeof(win32_file_t) + READBUFFERSIZE);
+	(*win32_file) = {};
 	win32_file->fileInfo.size = size;
 	win32_file->fs = fs;
-	win32_file->readBuffer = ((char*)win32_file) + sizeof(win32_file_t);
+	win32_file->buffer = ((char*)win32_file) + sizeof(win32_file_t);
 	
 	(*file) = (file_t* )win32_file;
 	return 1;
 }
 
-char* 
-readLine(file_t* file)
+void
+writeLine(const file_t* file, const char* line)
 {
 	win32_file_t* win32_file = (win32_file_t*)file;
-	return fgets(win32_file->readBuffer, READBUFFERSIZE, win32_file->fs);
+	int bytes = fputs(line, win32_file->fs);
+	win32_file->fileInfo.size += bytes;
+}
+
+char* 
+readLine(const file_t* file)
+{
+	win32_file_t* win32_file = (win32_file_t*)file;
+	return fgets(win32_file->buffer, READBUFFERSIZE, win32_file->fs);
 }
 
 void 
-freeFile(file_t* file) 
+freeFile(const file_t* file) 
 {
 	if (file)
 	{
 		win32_file_t* win32_file = (win32_file_t*)file;
 		fclose(win32_file->fs);
-
-		VirtualFree(file, 0, MEM_RELEASE);
 	}
 }
 
@@ -318,12 +356,14 @@ _tmain()
 	_memory.base = VirtualAlloc(BaseAddress, _memory.totalSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 	_memory.transient = (void* )((char* )_memory.base + (_memory.totalSize - _memory.transientSize));
 	_alloced.head = _memory.base;
+	_transient.head = _memory.transient;
 
 	init_game();
 
 	_alive = true;
 	while (_alive)
 	{
+		resetTransient();
 		beginRender();
 		updateAndRender();
 		renderComplete();

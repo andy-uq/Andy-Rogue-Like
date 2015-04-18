@@ -1,4 +1,7 @@
 #include "arl.h"
+#include <stdio.h>
+#include <string.h>
+#include <stdarg.h>  
 
 enum elementType_t {
 	FLOOR,
@@ -135,6 +138,76 @@ int openDoor(level_t* map, v2i pos)
 	return 1;
 }
 
+internal
+char* append(char* dest, const char* source)
+{
+	while (*source)
+	{
+		*(dest++) = *source;
+		source++;
+	}
+
+	return dest;
+}
+
+internal
+void writeFileComment(file_t* file, const char* commentFormat, ...)
+{
+	char comment[508];
+	char line[512];
+	va_list args;
+	va_start(args, commentFormat);
+	vsnprintf_s(comment, sizeof(comment), commentFormat, args);
+	va_end(args);
+
+	char* write = line;
+	*(write++) = '#';
+	*(write++) = ' ';
+	
+	write = append(write, comment);
+
+	*(write++) = '\r';
+	*(write++) = '\n';
+	*(write++) = 0;
+
+	writeLine(file, line);
+}
+
+internal
+void writeFileKeyValue(file_t* file, const char* key, const char* valueFormat, ...)
+{
+	char value[256];
+	char line[512];
+	va_list args;
+	va_start(args, valueFormat);
+	vsnprintf_s(value, sizeof(value), valueFormat, args);
+	va_end(args);
+
+	char* write = append(line, key);
+	*(write++) = '=';
+	write = append(write, value);
+	*(write++) = '\r';
+	*(write++) = '\n';
+	*(write++) = 0;
+
+	writeLine(file, line);
+}
+
+internal
+void saveGame()
+{
+	file_t* saveGame;
+	if (!openFileForWrite("savegame.txt", &saveGame))
+		return;
+
+	writeFileComment(saveGame, "Savegame v1.0");
+	writeFileKeyValue(saveGame, "POS_X", "%d", _charPos.x);
+	writeFileKeyValue(saveGame, "POS_Y", "%d", _charPos.y);
+	writeFileComment(saveGame, "EOF");
+
+	freeFile(saveGame);
+}
+
 void
 processInput(const game_input input)
 {
@@ -151,13 +224,15 @@ processInput(const game_input input)
 		_charPos = new_pos;
 		break;
 	}
+
+	saveGame();
 }
 
 internal
 level_t* readMap(const char* filename) 
 {
 	file_t* file;
-	if (!readFile(filename, &file))
+	if (!openFileForRead(filename, &file))
 		return NULL;
 
 	void* memory = allocate(sizeof(level_t) + file->size);
