@@ -1,25 +1,32 @@
 #include "arl.h"
 #include <stdio.h>
 #include <string.h>
-#include <stdarg.h>  
+#include <stdarg.h>
+#include <stdlib.h>
 
 enum elementType_t {
 	FLOOR,
 	WALL,
 	DOOR,
 	OPEN_DOOR,
+
+
+	END_OF_MAP
 };
 
 struct mapElement_t {
 	elementType_t type;
 };
 
-struct level_t {
+struct level_t
+{
+	const char* filename;
 	mapElement_t* data;
 	v2i size;
 };
 
 v2i _screenSize = { 20, 10 };
+
 v2i _charPos;
 level_t* _currentLevel;
 
@@ -194,6 +201,14 @@ void writeFileKeyValue(file_t* file, const char* key, const char* valueFormat, .
 }
 
 internal
+bool isDoor(mapElement_t* e)
+{
+	return
+		e->type == DOOR
+		|| e->type == OPEN_DOOR;
+}
+
+internal
 void saveGame()
 {
 	file_t* saveGame;
@@ -203,8 +218,25 @@ void saveGame()
 	writeFileComment(saveGame, "Savegame v1.0");
 	writeFileKeyValue(saveGame, "POS_X", "%d", _charPos.x);
 	writeFileKeyValue(saveGame, "POS_Y", "%d", _charPos.y);
-	writeFileComment(saveGame, "EOF");
 
+	writeFileComment(saveGame, "DOORS");
+
+	int doorId = 1;
+	mapElement_t* p = _currentLevel->data;
+	while (p->type != END_OF_MAP)
+	{
+		if (isDoor(p))
+		{
+			writeFileKeyValue(saveGame, "DOOR", "%d %s", doorId, (p->type == DOOR) ? "CLOSED" : "OPEN");
+			doorId++;
+		}
+
+		p++;
+	}
+
+	writeFileComment(saveGame, "END_DOORS");
+
+	writeFileComment(saveGame, "EOF");
 	freeFile(saveGame);
 }
 
@@ -228,6 +260,193 @@ processInput(const game_input input)
 	saveGame();
 }
 
+char* trimSpacesEnd(char* line)
+{
+	char* p = line;
+
+	while (*(p + 1))
+		p++;
+
+	while (*p == ' ' || *p == '\r' || *p == '\n')
+	{
+		*p = 0;
+		p--;
+	}
+
+	return line;
+}
+
+void trimSpaces(char** line)
+{
+	const char* p = (*line);
+	while (*p && *p == ' ')
+		p++;
+}
+
+void trim(char** line)
+{
+	char* p = (*line);
+	while (*p && *p == ' ')
+		p++;
+
+	while (*(p + 1))
+		p++;
+
+	while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n')
+	{
+		*p = 0;
+		p--;
+	}
+}
+
+typedef int(*ParseKey)(const char* key, const char* valueBuffer);
+
+internal
+int parseKeyValue(char* line, ParseKey* parseFuncs)
+{
+	char buffer[512];
+
+	char* key = line;
+
+	char c;
+	while ((c = *line) != 0)
+	{
+		if (c == '=')
+		{
+			(*line) = 0;
+			line++;
+			break;
+		}
+
+		line++;
+	}
+
+	trimSpaces(&line);
+	strncpy_s(buffer, line, 512);
+
+	trimSpacesEnd(key);
+	while (*parseFuncs)
+	{
+		int result = (*parseFuncs)(key, buffer);
+		if (result)
+			return 1;
+
+		parseFuncs++;
+	}
+
+	return 0;
+}
+int parseIntValue(const char* target, const char* key, const char* value, void(*applyFunc)(int))
+{
+	if (_stricmp(target, key))
+		return 0;
+
+	applyFunc(atoi(value));
+	return 1;
+}
+
+int posX(const char* key, const char* value)
+{
+	return parseIntValue("pos_x", key, value, [](int i) { _charPos.x = i; });
+}
+
+int posY(const char* key, const char* value)
+{
+	return parseIntValue("pos_y", key, value, [](int i) { _charPos.y = i; });
+}
+
+bool endsWith(const char* target, const char* compareTo)
+{
+	const char* pTarget = target;
+	const char* pCompareTo = compareTo;
+
+	while (*pCompareTo)
+	{
+		pCompareTo++;
+		pTarget++;
+
+		if (*pTarget == 0)
+			return false;
+	}
+
+	while (*pTarget)
+	{
+		pTarget++;
+	}
+
+	while (pCompareTo != compareTo)
+	{
+		if (*pTarget != *pCompareTo)
+			return false;
+
+		pTarget--;
+		pCompareTo--;
+	}
+
+	return true;
+}
+
+int door(const char* key, const char* value)
+{
+	if (_stricmp("door", key))
+		return 0;
+
+	int targetDoorId = atoi(value);
+	int doorId = 0;
+	mapElement_t* p = _currentLevel->data;
+	while (p->type != END_OF_MAP)
+	{
+		if (isDoor(p))
+		{
+			doorId++;
+			if (doorId == targetDoorId)
+			{
+				p->type = endsWith(value, "OPEN")
+					? OPEN_DOOR
+					: DOOR;
+
+				return 1;
+			}
+		}
+
+		p++;
+	}
+	
+	return 0;
+}
+
+internal
+void loadSaveGame()
+{
+	file_t* file;
+	if (!openFileForRead("savegame.txt", &file))
+		return;
+
+	const char* line;
+	char buffer_[512];
+	char* buffer = buffer_;
+
+	ParseKey parseFuncs[] = {
+		posX,
+		posY,
+		door,
+		0
+	};
+
+	while ((line = readLine(file)) != NULL)
+	{
+		strncpy_s(buffer, 512, line, _TRUNCATE);
+		trim(&buffer);
+
+		if (buffer[0] == '#')
+			continue;
+
+		parseKeyValue(buffer, parseFuncs);
+	}
+
+	freeFile(file);
+}
+
 internal
 level_t* readMap(const char* filename) 
 {
@@ -235,7 +454,7 @@ level_t* readMap(const char* filename)
 	if (!openFileForRead(filename, &file))
 		return NULL;
 
-	void* memory = allocate(sizeof(level_t) + file->size);
+	void* memory = allocate(sizeof(level_t) + (file->size + 1) * sizeof(mapElement_t));
 	_currentLevel = (level_t*)memory;
 	_currentLevel->data = (mapElement_t*)(((char* )memory) + sizeof(level_t));
 	
@@ -274,6 +493,8 @@ level_t* readMap(const char* filename)
 			_currentLevel->size.x = xOffset;
 	}
 
+	ptr->type = END_OF_MAP;
+
 	freeFile(file);
 	return _currentLevel;
 }
@@ -283,4 +504,5 @@ init_game()
 {
 	_charPos = { 1, 1 };
 	_currentLevel = readMap("map01.txt");
+	loadSaveGame();
 }
