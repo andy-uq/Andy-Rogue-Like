@@ -4,38 +4,31 @@
 
 #define NULL 0
 
-struct v2i {
-	int x, y;
-};
+#include "types.h"
 
-struct game_input {
-	short xOffset, yOffset;
-	bool quit;
-};
+/* strings */
+char* str_append(char* dest, const char* source);
+char* str_trimend(char* str);
+void str_trimstart(char** str);
+void str_trim(char** str);
+bool str_endswith(const char* target, const char* compareTo);
 
-void init_game();
+bool clamp(v2i* pos, int maxX, int maxY);
+
+/* game */
+void initGame();
+void initGame(gameState_t* game);
 void updateAndRender();
 void processInput(const game_input input);
+void saveGame(gameState_t* game);
+void loadGame(gameState_t* game);
 
-void drawToBuffer(const char* text);
-void drawCharAt(const v2i pos, const char);
+/* map */
+bool isDoor(mapElement_t* e);
+elementType_t getMapElement(level_t* level, int x, int y);
+elementType_t getMapElement(level_t* level, v2i pos);
 
-void debug(wchar_t* outputString);
-void debug(char* outputString);
-void debugf(const wchar_t* format, ...);
-void debugf(const char* format, ...);
+/* files */
+bool parseKey(char* buffer, const char* key, char** value);
 
-struct file_t
-{
-	int size;
-};
 
-int openFileForWrite(const char* filename, file_t** file);
-void writeLine(const file_t* file, const char* line);
-
-int openFileForRead(const char* filename, file_t** file);
-char* readLine(const file_t* file);
-
-void freeFile(const file_t* file);
-
-void* allocate(size_t size);

@@ -4,6 +4,7 @@
 #include <tchar.h>
 
 #include "arl.h"
+#include "platform.h"
 
 HANDLE _hStdin, _hStdout, _hActiveBuffer, _hBackBuffer;
 int _fdwSaveOldMode;
@@ -18,7 +19,6 @@ struct {
 struct {
 	void* head;
 } _alloced, _transient;
-
 
 struct win32_file_t
 {
@@ -358,7 +358,7 @@ _tmain()
 	_alloced.head = _memory.base;
 	_transient.head = _memory.transient;
 
-	init_game();
+	initGame();
 
 	_alive = true;
 	while (_alive)
