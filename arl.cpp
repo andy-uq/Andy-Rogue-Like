@@ -2,6 +2,7 @@
 #include "platform.h"
 
 #include <stdio.h>
+#include <math.h>
 #include <string.h>
 #include <stdarg.h>
 
@@ -108,10 +109,11 @@ updateAndRender()
 
 int sRandom = 1337;
 
-internal
-void moveMob(v2i* m)
+
+internal 
+v2i moveRandom(v2i pos)
 {
-	v2i newPos = *m;
+	v2i newPos = pos;
 
 	sRandom *= 113;
 
@@ -120,22 +122,116 @@ void moveMob(v2i* m)
 	else if (sRandom % 5 == 2) newPos.x--;
 	else if (sRandom % 3 == 3) newPos.x++;
 
+	return newPos;
+}
+
+#define abs(x) ((x) > 0 ? (x) : -(x))
+
+internal 
+bool canSee(level_t* level, v2i source, v2i target)
+{
+	v2i p = { abs(target.x - source.x), abs(target.y - source.y) };
+	double m = p.x == 0 ? NAN : ( double )p.y / ( double )p.x;
+	double a = 0;
+
+	if (p.x > p.y)
+	{
+		int d = (target.x > source.x) ? 1 : -1;
+		if (target.y < source.y) 
+			m *= -1;
+
+		for (v2i i = source; p.x > 0; p.x--)
+		{
+			auto e = level->map[i.y * level->size.x + i.x].type;
+			if (e != OPEN_DOOR && e != FLOOR)
+				return false;
+
+			i.x += d;
+			a += m;
+			if (a > 1)
+			{
+				i.y += 1;
+				a -= 1;
+			}
+			else if (a < -1)
+			{
+				i.y -= 1;
+				a += 1;
+			}
+		}
+
+		return true;
+	}
+	else
+	{
+		int d = (target.y > source.y) ? 1 : -1;
+		if (target.x < source.x)
+			m *= -1;
+
+		for (v2i i = source; p.y > 0; p.y--)
+		{
+			auto e = level->map[i.y * level->size.x + i.x].type;
+			if (e != OPEN_DOOR && e != FLOOR)
+				return false;
+
+			i.y += d;
+			a += m;
+			if (a > 1)
+			{
+				i.x += 1;
+				a -= 1;
+			}
+			else if (a < -1)
+			{
+				i.x -= 1;
+				a += 1;
+			}
+		}
+
+		return true;
+	}
+}
+
+internal 
+v2i moveTowards(v2i from, v2i towards)
+{
+	v2i newPos = from;
+	v2i p = { towards.x - newPos.x, towards.y - newPos.y };
+
+	if (p.x > 0) newPos.x++;
+	if (p.x < 0) newPos.x--;
+	if (p.y > 0) newPos.y++;
+	if (p.y < 0) newPos.y--;
+
+	if (newPos.x == towards.x && newPos.y == towards.y)
+		return from;
+
+	return newPos;
+}
+
+internal
+void moveMob(gameState_t* game, monster_t* m)
+{
+	v2i newPos = (canSee(&game->currentLevel, m->position, game->charPos))
+		? moveTowards(m->position, game->charPos)
+		: moveRandom(m->position);
+	
 	if (clamp(&newPos, _game.currentLevel.size.x, _game.currentLevel.size.y))
 		return;
 
 	elementType_t mapElement = getMapElement(&_game.currentLevel, newPos);
 	if (mapElement == OPEN_DOOR || mapElement == FLOOR)
 	{
-		*m = newPos;
+		m->position = newPos;
 	}
 }
 
 internal
-void moveMobs()
+void moveMobs(gameState_t* game)
 {
-	for (monster_t* m = _game.currentLevel.mobs; m->glyph; m++)
+	for (monster_t* m = game->currentLevel.mobs; m->glyph; m++)
 	{
-		moveMob(&m->position);
+		moveMob(game, m);
 	}
 }
 
@@ -166,7 +262,7 @@ processInput(const game_input input)
 		break;
 	}
 
-	moveMobs();
+	moveMobs(&_game);
 	saveGame(&_game);
 }
 
