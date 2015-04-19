@@ -81,10 +81,18 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="arl.cpp" />
+    <ClCompile Include="file.cpp" />
+    <ClCompile Include="init.cpp" />
+    <ClCompile Include="loadgame.cpp" />
+    <ClCompile Include="map.cpp" />
+    <ClCompile Include="savegame.cpp" />
+    <ClCompile Include="string.cpp" />
     <ClCompile Include="win32.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="arl.h" />
+    <ClInclude Include="platform.h" />
+    <ClInclude Include="types.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
