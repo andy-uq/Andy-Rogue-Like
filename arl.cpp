@@ -202,28 +202,59 @@ v2i moveTowards(v2i from, v2i towards)
 	if (p.x < 0) newPos.x--;
 	if (p.y > 0) newPos.y++;
 	if (p.y < 0) newPos.y--;
-
-	if (newPos.x == towards.x && newPos.y == towards.y)
-		return from;
-
+	
 	return newPos;
 }
 
 internal
-void moveMob(gameState_t* game, monster_t* m)
+bool intersects(v2i source, v2i target)
 {
-	v2i newPos = (canSee(&game->currentLevel, m->position, game->charPos))
-		? moveTowards(m->position, game->charPos)
-		: moveRandom(m->position);
-	
-	if (clamp(&newPos, _game.currentLevel.size.x, _game.currentLevel.size.y))
-		return;
+	return (source.x == target.x && source.y == target.y);
+}
 
-	elementType_t mapElement = getMapElement(&_game.currentLevel, newPos);
+internal
+bool moveMob(gameState_t* game, monster_t* mob)
+{
+	v2i newPos;
+	
+	if (mob->target.x)
+	{
+		newPos = moveTowards(mob->position, mob->target);
+	}
+	else
+	{
+		return false;
+	}
+	
+	if (clamp(&newPos, game->currentLevel.size.x, _game.currentLevel.size.y))
+		goto badMove;
+
+	if (intersects(game->charPos, newPos))
+		goto badMove;
+
+	for (monster_t* m = game->currentLevel.mobs; m->glyph; m++)
+	{
+		if (m == mob)
+			continue;
+
+		if (intersects(m->position, newPos))
+			goto badMove;
+	}
+
+	elementType_t mapElement = getMapElement(&game->currentLevel, newPos);
 	if (mapElement == OPEN_DOOR || mapElement == FLOOR)
 	{
-		m->position = newPos;
+		mob->position = newPos;
+		if (intersects(mob->position, mob->target))
+		{
+			mob->target = { 0, 0 };
+		}
+
+		return true;
 	}
+
+badMove:
+	return false;
 }
 
 internal
@@ -231,7 +262,19 @@ void moveMobs(gameState_t* game)
 {
 	for (monster_t* m = game->currentLevel.mobs; m->glyph; m++)
 	{
-		moveMob(game, m);
+		if (canSee(&game->currentLevel, m->position, game->charPos))
+		{
+			m->target = game->charPos;
+		}
+		
+		m->energy = (m->energy + m->speed > 100) ? 100 : m->energy + m->speed;
+		if (m->energy > 10)
+		{
+			if (moveMob(game, m))
+			{
+				m->energy -= 10;
+			}
+		}
 	}
 }
 

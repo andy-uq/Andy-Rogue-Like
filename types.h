@@ -27,6 +27,9 @@ struct monster_t
 {
 	char glyph;
 	v2i position;
+	v2i target;
+	int speed;
+	int energy;
 };
 
 struct level_t

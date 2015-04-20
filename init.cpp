@@ -100,7 +100,8 @@ void initGame(gameState_t* game)
 	level->filename = "level01.txt";
 	level->mobs = (monster_t *)allocate(sizeof(monster_t) * 10);
 	level->mobs[0] = { 'M',{ 1, 1 } };
-	level->mobs[1] = { 'M',{ 37, 17 } };
+	level->mobs[0].speed = 2;
+	level->mobs[1].speed = 1;
 	level->mobs[2].glyph = 0;
 
 	readLevel(game, level);
