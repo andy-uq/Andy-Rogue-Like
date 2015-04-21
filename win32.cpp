@@ -336,6 +336,18 @@ readLine(const file_t* file)
 	return fgets(win32_file->buffer, READBUFFERSIZE, win32_file->fs);
 }
 
+long
+seek(const file_t* file, long offset)
+{
+	win32_file_t* win32_file = (win32_file_t*)file;
+	if (offset < 0)
+	{
+		return fseek(win32_file->fs, offset, SEEK_END);
+	}
+	
+	return fseek(win32_file->fs, offset, SEEK_SET);
+}
+
 void 
 freeFile(const file_t* file) 
 {

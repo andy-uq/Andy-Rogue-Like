@@ -7,44 +7,8 @@
 
 typedef int(*ParseKey)(const char* key, const char* valueBuffer, gameState_t* game);
 
-internal
-int nextInt(const char** value)
+internal int apply(const char* key, const char* buffer, const ParseKey* parseFuncs, gameState_t* game)
 {
-	const char* p = *value;
-	while (*p >= '0' && *p <= '9')
-		p++;
-
-	while (*p == ' ' || *p == '\t')
-		p++;
-
-	*value = p;
-	return atoi(p);
-}
-
-internal
-int parseKeyValue(char* line, ParseKey* parseFuncs, gameState_t* game)
-{
-	char buffer[512];
-
-	char* key = line;
-
-	char c;
-	while ((c = *line) != 0)
-	{
-		if (c == '=')
-		{
-			(*line) = 0;
-			line++;
-			break;
-		}
-
-		line++;
-	}
-
-	str_trimstart(&line);
-	strncpy_s(buffer, line, 512);
-
-	str_trimend(key);
 	while (*parseFuncs)
 	{
 		int result = (*parseFuncs)(key, buffer, game);
@@ -79,7 +43,7 @@ int posY(const char* key, const char* value, gameState_t* game)
 internal
 int monster(const char* key, const char* value, gameState_t* game)
 {
-	if (_stricmp("monster", key))
+	if (_stricmp("monster", key) || !game->currentLevel.mobs)
 		return 0;
 
 	int targetId = atoi(value);
@@ -90,6 +54,7 @@ int monster(const char* key, const char* value, gameState_t* game)
 		{
 			m->position.x = nextInt(&value);
 			m->position.y = nextInt(&value);
+			m->energy = nextInt(&value);
 			return 1;
 		}
 
@@ -155,7 +120,8 @@ void loadGame(gameState_t* game)
 		if (buffer[0] == '#')
 			continue;
 
-		parseKeyValue(buffer, parseFuncs, game);
+		const ParseKey* p = parseFuncs;
+		parseKeyValue(buffer, [=](const char* key, const char* value) { return apply(key, value, p, game); });
 	}
 
 	freeFile(file);

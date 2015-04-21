@@ -91,7 +91,7 @@ renderMap(level_t* map)
 			drawCharAt(toScreenCoord(p), c);
 		}
 
-	for (monster_t* m = _game.currentLevel.mobs; m->glyph; m++)
+	for (monster_t* m = _game.currentLevel.mobs; m && m->glyph; m++)
 	{
 		v2i xy = { m->position.x - mapOffset.x, m->position.y - mapOffset.y };
 		if (clamp(&xy, _screenSize.x, _screenSize.y))
@@ -105,24 +105,6 @@ void
 updateAndRender()
 {
 	renderMap(&_game.currentLevel);
-}
-
-int sRandom = 1337;
-
-
-internal 
-v2i moveRandom(v2i pos)
-{
-	v2i newPos = pos;
-
-	sRandom *= 113;
-
-	if (sRandom % 11 == 0) newPos.y--;
-	else if (sRandom % 7 == 1) newPos.y++;
-	else if (sRandom % 5 == 2) newPos.x--;
-	else if (sRandom % 3 == 3) newPos.x++;
-
-	return newPos;
 }
 
 #define abs(x) ((x) > 0 ? (x) : -(x))
@@ -260,7 +242,7 @@ badMove:
 internal
 void moveMobs(gameState_t* game)
 {
-	for (monster_t* m = game->currentLevel.mobs; m->glyph; m++)
+	for (monster_t* m = game->currentLevel.mobs; m && m->glyph; m++)
 	{
 		if (canSee(&game->currentLevel, m->position, game->charPos))
 		{

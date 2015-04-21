@@ -4,6 +4,11 @@ struct v2i {
 	int x, y;
 };
 
+struct file_t
+{
+	int size;
+};
+
 struct game_input {
 	short xOffset, yOffset;
 	bool quit;

@@ -14,15 +14,11 @@ void debugf(const wchar_t* format, ...);
 void debugf(const char* format, ...);
 
 /* file */
-struct file_t
-{
-	int size;
-};
-
 int openFileForWrite(const char* filename, file_t** file);
 void writeLine(const file_t* file, const char* line);
 
 int openFileForRead(const char* filename, file_t** file);
 char* readLine(const file_t* file);
 
+long seek(const file_t* file, long offset);
 void freeFile(const file_t* file);

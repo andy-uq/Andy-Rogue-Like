@@ -84,6 +84,7 @@
     <ClCompile Include="file.cpp" />
     <ClCompile Include="init.cpp" />
     <ClCompile Include="loadgame.cpp" />
+    <ClCompile Include="loadmonster.cpp" />
     <ClCompile Include="map.cpp" />
     <ClCompile Include="savegame.cpp" />
     <ClCompile Include="string.cpp" />

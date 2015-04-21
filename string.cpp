@@ -80,3 +80,23 @@ bool str_endswith(const char* target, const char* compareTo)
 
 	return true;
 }
+
+bool str_startswith(const char* target, const char* compareTo)
+{
+	const char* pTarget = target;
+	const char* pCompareTo = compareTo;
+
+	while (*pCompareTo)
+	{
+		if (*pTarget != *pCompareTo)
+			return false;
+		
+		if (*pTarget == 0)
+			return false;
+
+		pCompareTo++;
+		pTarget++;
+	}
+
+	return true;
+}

@@ -4,6 +4,31 @@
 #include "platform.h"
 
 internal
+int readMonster(const char* filename, level_t* level)
+{
+	file_t* file;
+	if (!openFileForRead(filename, &file))
+		return 0;
+
+	int monsterCount = 0;
+
+	char* line;
+	while ((line = readLine(file)) != NULL)
+	{
+		if (str_startswith(line, "END_MONSTER"))
+			monsterCount++;
+	}
+
+	seek(file, 0L);
+	level->mobs = (monster_t* )allocate(sizeof(monster_t) * (monsterCount + 1));
+
+	loadMonsters(file, level->mobs);
+	freeFile(file);
+
+	return monsterCount;
+}
+
+internal
 int readMap(const char* filename, gameState_t* game, level_t* level)
 {
 	file_t* file;
@@ -85,6 +110,8 @@ level_t* readLevel(gameState_t* game, level_t* level)
 
 		if (parseKey(buffer, "MONSTER", &value))
 		{
+			if (!readMonster(value, level))
+				return NULL;
 		}
 	}
 
@@ -98,11 +125,6 @@ void initGame(gameState_t* game)
 	game->charPos = { 1, 1 };
 	
 	level->filename = "level01.txt";
-	level->mobs = (monster_t *)allocate(sizeof(monster_t) * 10);
-	level->mobs[0] = { 'M',{ 1, 1 } };
-	level->mobs[0].speed = 2;
-	level->mobs[1].speed = 1;
-	level->mobs[2].glyph = 0;
 
 	readLevel(game, level);
 	loadGame(game);
