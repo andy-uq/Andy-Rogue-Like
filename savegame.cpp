@@ -28,6 +28,26 @@ void writeFileComment(file_t* file, const char* commentFormat, ...)
 }
 
 internal
+void writeFileLine(file_t* file, const char* format, ...)
+{
+	char line[512];
+	va_list args;
+	va_start(args, format);
+	vsnprintf_s(line, sizeof(line), format, args);
+	va_end(args);
+
+	char* write = line;
+	while (*write)
+		write++;
+
+	*(write++) = '\r';
+	*(write++) = '\n';
+	*(write++) = 0;
+
+	writeLine(file, line);
+}
+
+internal
 void writeFileKeyValue(file_t* file, const char* key, const char* valueFormat, ...)
 {
 	char value[256];
@@ -74,7 +94,13 @@ internal void saveMonsters(file_t* saveGame, monster_t* mobs)
 	int monsterId = 1;
 	for (monster_t* m = mobs; m->glyph; m++)
 	{
-		writeFileKeyValue(saveGame, "MONSTER", "%d %d %d %d", monsterId, m->position.x, m->position.y, m->energy);
+		writeFileKeyValue(saveGame, "MONSTER", "%d", monsterId);
+		writeFileKeyValue(saveGame, "POSITION", "%d %d", m->position.x, m->position.y);
+		writeFileKeyValue(saveGame, "HP", "%d", m->hp);
+		writeFileKeyValue(saveGame, "ATTACK", "%d", m->attack);
+		writeFileKeyValue(saveGame, "DEFENSE", "%d", m->defense);
+		writeFileKeyValue(saveGame, "DAMAGE", "%d", m->damage);
+		writeFileLine(saveGame, "END_MONSTER");
 		monsterId++;
 	}
 
@@ -88,8 +114,13 @@ void saveGame(gameState_t* game)
 		return;
 
 	writeFileComment(saveGame, "Savegame v1.0");
-	writeFileKeyValue(saveGame, "POS_X", "%d", game->player.position.x);
-	writeFileKeyValue(saveGame, "POS_Y", "%d", game->player.position.y);
+	writeFileLine(saveGame, "PLAYER");
+	writeFileKeyValue(saveGame, "POSITION", "%d %d", game->player.position.x, game->player.position.y);
+	writeFileKeyValue(saveGame, "HP", "%d", game->player.hp);
+	writeFileKeyValue(saveGame, "ATTACK", "%d", game->player.attack);
+	writeFileKeyValue(saveGame, "DEFENSE", "%d", game->player.defense);
+	writeFileKeyValue(saveGame, "DAMAGE", "%d", game->player.damage);
+	writeFileLine(saveGame, "END_PLAYER");
 
 	saveDoors(saveGame, game->currentLevel.map);
 	saveMonsters(saveGame, game->currentLevel.mobs);

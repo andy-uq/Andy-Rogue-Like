@@ -14,6 +14,24 @@ int nextInt(const char** value)
 	return atoi(p);
 }
 
+char* parseValue(char* line)
+{
+	while ((*line != '='))
+	{
+		if (*line == 0)
+			return line;
+
+		line++;
+	}
+
+	(*line) = 0;
+
+	auto value = line + 1;
+	str_trim(&value);
+
+	return value;
+}
+
 int parseKeyValue(char* line, std::function<int(const char*, const char*)> func)
 {
 	char* key = line;

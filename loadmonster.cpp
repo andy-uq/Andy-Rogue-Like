@@ -1,10 +1,10 @@
 #include "arl.h"
 #include "platform.h"
 
-typedef int(*ParseKey)(const char* key, const char* valueBuffer, monster_t* monster);
+typedef int(*ParseMonsterKey)(const char* key, const char* valueBuffer, monster_t* monster);
 
 internal
-int apply(const char* key, const char* buffer, const ParseKey* parseFuncs, monster_t* monster)
+int apply(const char* key, const char* buffer, const ParseMonsterKey* parseFuncs, monster_t* monster)
 {
 	while (*parseFuncs)
 	{
@@ -29,15 +29,44 @@ int parseIntValue(const char* target, const char* key, const char* value, std::f
 }
 
 internal
-int posX(const char* key, const char* value, monster_t* monster)
+int position(const char* key, const char* value, monster_t* monster)
 {
-	return parseIntValue("POS_X", key, value, [monster](int i) { monster->position.x = i; });
+	if (_stricmp(key, "POSITION"))
+		return 0;
+
+	monster->position.x = atoi(value);
+	monster->position.y = nextInt(&value);
+	return 1;
 }
 
 internal
-int posY(const char* key, const char* value, monster_t* monster)
+int hp(const char* key, const char* value, monster_t* monster)
 {
-	return parseIntValue("POS_Y", key, value, [monster](int i) { monster->position.y = i; });
+	return parseIntValue("HP", key, value, [monster](int i) { monster->hp = i; });
+}
+
+internal
+int attack(const char* key, const char* value, monster_t* monster)
+{
+	return parseIntValue("ATTACK", key, value, [monster](int i) { monster->attack = i; });
+}
+
+internal
+int defense(const char* key, const char* value, monster_t* monster)
+{
+	return parseIntValue("DEFENSE", key, value, [monster](int i) { monster->defense = i; });
+}
+
+internal
+int damage(const char* key, const char* value, monster_t* monster)
+{
+	return parseIntValue("DAMAGE", key, value, [monster](int i) { monster->damage = i; });
+}
+
+internal
+int energy(const char* key, const char* value, monster_t* monster)
+{
+	return parseIntValue("ENERGY", key, value, [monster](int i) { monster->energy = i; });
 }
 
 internal
@@ -57,13 +86,36 @@ int glyph(const char* key, const char* value, monster_t* monster)
 }
 
 internal
-ParseKey _parseFuncs[] = {
-	posX,
-	posY,
+ParseMonsterKey _parseFuncs[] = {
+	position,
+	hp,
+	attack,
+	defense,
+	damage,
+	energy,
 	speed,
 	glyph,
 	0
 };
+
+void loadMonster(file_t* file, monster_t* monster)
+{
+	char* buffer;
+	while ((buffer = readLine(file)) != NULL)
+	{
+		str_trim(&buffer);
+
+		if (buffer[0] == '#')
+			continue;
+
+		if (str_startswith(buffer, "END_MONSTER"))
+		{
+			return;
+		}
+
+		parseKeyValue(buffer, [monster](const char* key, const char* value) { return apply(key, value, _parseFuncs, monster); });
+	}
+}
 
 void loadMonsters(file_t* file, monster_t* m)
 {
@@ -75,14 +127,10 @@ void loadMonsters(file_t* file, monster_t* m)
 		if (buffer[0] == '#')
 			continue;
 
-		if (str_startswith(buffer, "END_MONSTER"))
-		{
-			m++;
-			*m = { 'M' };
-			continue;
-		}
-		
-		parseKeyValue(buffer, [m](const char* key, const char* value) { return apply(key, value, _parseFuncs, m); });
+		*m = { 'M' };
+		loadMonster(file, m);
+
+		m++;
 	}
 
 	m->glyph = 0;

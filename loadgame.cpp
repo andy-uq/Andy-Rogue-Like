@@ -5,13 +5,29 @@
 #include "arl.h"
 #include "platform.h"
 
-typedef int(*ParseKey)(const char* key, const char* valueBuffer, gameState_t* game);
+typedef int(*ParseKey)(file_t* file, gameState_t* game);
+typedef int(*ParseGameKey)(const char* key, const char* valueBuffer, gameState_t* game);
+typedef int(*ParsePlayerKey)(const char* key, const char* valueBuffer, player_t* player);
 
-internal int apply(const char* key, const char* buffer, const ParseKey* parseFuncs, gameState_t* game)
+internal int apply(const char* key, const char* buffer, const ParseGameKey* parseFuncs, gameState_t* game)
 {
 	while (*parseFuncs)
 	{
 		int result = (*parseFuncs)(key, buffer, game);
+		if (result)
+			return 1;
+
+		parseFuncs++;
+	}
+
+	return 0;
+}
+
+internal int apply(const char* key, const char* buffer, const ParsePlayerKey* parseFuncs, player_t* player)
+{
+	while (*parseFuncs)
+	{
+		int result = (*parseFuncs)(key, buffer, player);
 		if (result)
 			return 1;
 
@@ -28,16 +44,6 @@ int parseIntValue(const char* target, const char* key, const char* value, std::f
 
 	applyFunc(atoi(value));
 	return 1;
-}
-
-int posX(const char* key, const char* value, gameState_t* game)
-{
-	return parseIntValue("pos_x", key, value, [game](int i) { game->player.position.x = i; });
-}
-
-int posY(const char* key, const char* value, gameState_t* game)
-{
-	return parseIntValue("pos_y", key, value, [game](int i) { game->player.position.y = i; });
 }
 
 internal
@@ -94,6 +100,96 @@ int door(const char* key, const char* value, gameState_t* game)
 	return 0;
 }
 
+int position(const char* key, const char* value, player_t* player)
+{
+	if (_stricmp(key, "POSITION"))
+		return 0;
+
+	player->position.x = atoi(value);
+	player->position.y = nextInt(&value);
+	return 1;
+}
+
+internal
+int hp(const char* key, const char* value, player_t* player)
+{
+	return parseIntValue("HP", key, value, [player](int i) { player->hp = i; });
+}
+
+internal
+int attack(const char* key, const char* value, player_t* player)
+{
+	return parseIntValue("ATTACK", key, value, [player](int i) { player->attack = i; });
+}
+
+internal
+int defense(const char* key, const char* value, player_t* player)
+{
+	return parseIntValue("DEFENSE", key, value, [player](int i) { player->defense = i; });
+}
+
+internal
+int damage(const char* key, const char* value, player_t* player)
+{
+	return parseIntValue("DAMAGE", key, value, [player](int i) { player->damage = i; });
+}
+
+ParsePlayerKey _parsePlayerFuncs[] = {
+	position,
+	hp,
+	attack,
+	defense,
+	damage,
+	0
+};
+
+internal
+void loadPlayer(file_t* file, player_t* player)
+{
+	char* buffer;
+	while ((buffer = readLine(file)) != NULL)
+	{
+		str_trim(&buffer);
+
+		if (buffer[0] == '#')
+			continue;
+
+		if (str_startswith(buffer, "END_PLAYER"))
+		{
+			return;
+		}
+
+		parseKeyValue(buffer, [player](const char* key, const char* value) { return apply(key, value, _parsePlayerFuncs, player); });
+	}
+}
+
+void beginParse(file_t* file, char* buffer, gameState_t* game)
+{
+	if (_stricmp(buffer, "PLAYER") == 0)
+	{
+		loadPlayer(file, &game->player);
+		return;
+	}
+
+	if (str_startswith(buffer, "MONSTER"))
+	{
+		const char* value = parseValue(buffer);
+		int monsterId = atoi(value);
+
+		loadMonster(file, &game->currentLevel.mobs[monsterId - 1]);
+		return;
+	}
+	
+	ParseGameKey parseGameKeys[] = {
+		door,
+		monster,
+		0
+	};
+
+	ParseGameKey* pParseGameKeys = parseGameKeys;
+	parseKeyValue(buffer, [game, pParseGameKeys](const char* key, const char* value) { return apply(key, value, pParseGameKeys, game); });
+}
+
 void loadGame(gameState_t* game)
 {
 	file_t* file;
@@ -104,14 +200,6 @@ void loadGame(gameState_t* game)
 	char buffer_[512];
 	char* buffer = buffer_;
 
-	ParseKey parseFuncs[] = {
-		posX,
-		posY,
-		door,
-		monster,
-		0
-	};
-
 	while ((line = readLine(file)) != NULL)
 	{
 		strncpy_s(buffer, 512, line, _TRUNCATE);
@@ -120,8 +208,7 @@ void loadGame(gameState_t* game)
 		if (buffer[0] == '#')
 			continue;
 
-		const ParseKey* p = parseFuncs;
-		parseKeyValue(buffer, [=](const char* key, const char* value) { return apply(key, value, p, game); });
+		beginParse(file, buffer, game);
 	}
 
 	freeFile(file);

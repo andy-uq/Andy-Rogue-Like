@@ -23,7 +23,8 @@ void updateAndRender();
 void processInput(const game_input input);
 void saveGame(gameState_t* game);
 void loadGame(gameState_t* game);
-void loadMonsters(file_t* file, monster_t* m);
+void loadMonster(file_t* file, monster_t* monster);
+void loadMonsters(file_t* file, monster_t* monster);
 
 /* map */
 bool isDoor(mapElement_t* e);
@@ -33,5 +34,6 @@ elementType_t getMapElement(level_t* level, v2i pos);
 /* files */
 bool parseKey(char* buffer, const char* key, char** value);
 int nextInt(const char** value);
+char* parseValue(char* line);
 int parseKeyValue(char* line, std::function<int(const char*, const char*)> func);
 
