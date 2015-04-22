@@ -52,7 +52,7 @@ bool clamp(v2i* pos, int x, int y)
 internal void
 renderMap(level_t* map)
 {
-	v2i mapOffset = { _game.charPos.x - (_screenSize.x / 2), _game.charPos.y - (_screenSize.y / 2) };
+	v2i mapOffset = { _game.player.position.x - (_screenSize.x / 2), _game.player.position.y - (_screenSize.y / 2) };
 	clamp(&mapOffset, map->size.x - _screenSize.x, map->size.y - _screenSize.y);
 
 	v2i p = {};
@@ -63,7 +63,7 @@ renderMap(level_t* map)
 			int y = p.y + mapOffset.y;
 
 			char c;
-			if (_game.charPos.x == x && _game.charPos.y == y)
+			if (_game.player.position.x == x && _game.player.position.y == y)
 			{
 				c = '@';
 			}
@@ -211,7 +211,7 @@ bool moveMob(gameState_t* game, monster_t* mob)
 	if (clamp(&newPos, game->currentLevel.size.x, _game.currentLevel.size.y))
 		goto badMove;
 
-	if (intersects(game->charPos, newPos))
+	if (intersects(game->player.position, newPos))
 		goto badMove;
 
 	for (monster_t* m = game->currentLevel.mobs; m->glyph; m++)
@@ -244,9 +244,9 @@ void moveMobs(gameState_t* game)
 {
 	for (monster_t* m = game->currentLevel.mobs; m && m->glyph; m++)
 	{
-		if (canSee(&game->currentLevel, m->position, game->charPos))
+		if (canSee(&game->currentLevel, m->position, game->player.position))
 		{
-			m->target = game->charPos;
+			m->target = game->player.position;
 		}
 		
 		m->energy = (m->energy + m->speed > 100) ? 100 : m->energy + m->speed;
@@ -273,7 +273,7 @@ int openDoor(level_t* level, v2i pos)
 void
 processInput(const game_input input)
 {
-	v2i new_pos = { _game.charPos.x + input.xOffset, _game.charPos.y + input.yOffset };
+	v2i new_pos = { _game.player.position.x + input.xOffset, _game.player.position.y + input.yOffset };
 	int mapElement = getMapElement(&_game.currentLevel, new_pos);
 	switch (mapElement)
 	{
@@ -283,7 +283,7 @@ processInput(const game_input input)
 		openDoor(&_game.currentLevel, new_pos);
 		return;
 	default:
-		_game.charPos = new_pos;
+		_game.player.position = new_pos;
 		break;
 	}
 

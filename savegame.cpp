@@ -88,8 +88,8 @@ void saveGame(gameState_t* game)
 		return;
 
 	writeFileComment(saveGame, "Savegame v1.0");
-	writeFileKeyValue(saveGame, "POS_X", "%d", game->charPos.x);
-	writeFileKeyValue(saveGame, "POS_Y", "%d", game->charPos.y);
+	writeFileKeyValue(saveGame, "POS_X", "%d", game->player.position.x);
+	writeFileKeyValue(saveGame, "POS_Y", "%d", game->player.position.y);
 
 	saveDoors(saveGame, game->currentLevel.map);
 	saveMonsters(saveGame, game->currentLevel.mobs);

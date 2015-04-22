@@ -32,12 +32,12 @@ int parseIntValue(const char* target, const char* key, const char* value, std::f
 
 int posX(const char* key, const char* value, gameState_t* game)
 {
-	return parseIntValue("pos_x", key, value, [game](int i) { game->charPos.x = i; });
+	return parseIntValue("pos_x", key, value, [game](int i) { game->player.position.x = i; });
 }
 
 int posY(const char* key, const char* value, gameState_t* game)
 {
-	return parseIntValue("pos_y", key, value, [game](int i) { game->charPos.y = i; });
+	return parseIntValue("pos_y", key, value, [game](int i) { game->player.position.y = i; });
 }
 
 internal

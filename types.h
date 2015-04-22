@@ -28,13 +28,27 @@ struct mapElement_t {
 	elementType_t type;
 };
 
+struct player_t {
+	v2i position;
+
+	int hp;
+	int attack;
+	int defense;
+	int damage;
+};
+
 struct monster_t
 {
 	char glyph;
 	v2i position;
 	v2i target;
 	int speed;
+
 	int energy;
+	int hp;
+	int attack;
+	int defense;
+	int damage;
 };
 
 struct level_t
@@ -48,6 +62,6 @@ struct level_t
 
 struct gameState_t
 {
-	v2i charPos;
+	player_t player;
 	level_t currentLevel;
 };

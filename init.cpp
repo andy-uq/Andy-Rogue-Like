@@ -59,8 +59,8 @@ int readMap(const char* filename, gameState_t* game, level_t* level)
 				ptr->type = OPEN_DOOR;
 				break;
 			case '@':
-				game->charPos.x = xOffset;
-				game->charPos.y = level->size.y;
+				game->player.position.x = xOffset;
+				game->player.position.y = level->size.y;
 				break;
 			}
 
@@ -122,7 +122,7 @@ level_t* readLevel(gameState_t* game, level_t* level)
 void initGame(gameState_t* game)
 {
 	level_t* level = &game->currentLevel;
-	game->charPos = { 1, 1 };
+	game->player.position = { 1, 1 };
 	
 	level->filename = "level01.txt";
 
