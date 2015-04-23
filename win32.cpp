@@ -225,6 +225,9 @@ int win32_close()
 void 
 drawToBuffer(const char *text)
 {
+	if (!text)
+		return;
+
 	COORD coordBufCoord = {}, coordBufSize = { 80, 2 };
 	SMALL_RECT srctWriteRect = { 0, 0, 80, 2 };
 
@@ -244,6 +247,45 @@ drawToBuffer(const char *text)
 		coordBufSize,		// col-row size of chiBuffer 
 		coordBufCoord,		// top left src cell in chiBuffer 
 		&srctWriteRect);	// dest. screen textBuffer rectangle 
+}
+
+void 
+drawLineAt(v2i pos, const char *text)
+{
+	if (!text)
+		return;
+
+	CHAR_INFO textBuffer[80]; 
+	memset(textBuffer, 0, sizeof(textBuffer));
+
+	short length;
+	for (length = 0; length < 80 && *text; length++, text++)
+	{
+		textBuffer[length].Char.AsciiChar = *text;
+		textBuffer[length].Attributes = 0x0f;
+	}
+
+	COORD coordBufCoord = {}, coordBufSize = { length, 1 };
+	SMALL_RECT srctWriteRect = { (short)pos.x, (short)pos.y, (short)pos.x + length, (short)pos.y + 1 };
+
+	// Copy from the temporary textBuffer to the new screen textBuffer. 
+	WriteConsoleOutput(
+		_hBackBuffer,		// screen textBuffer to write to 
+		textBuffer,			// textBuffer to copy from 
+		coordBufSize,		// col-row size of chiBuffer 
+		coordBufCoord,		// top left src cell in chiBuffer 
+		&srctWriteRect);	// dest. screen textBuffer rectangle 
+}
+
+void
+drawfLineAt(v2i pos, const char *format, ...)
+{
+	char buffer[80];
+	va_list argp;
+	va_start(argp, format);
+	vsprintf_s(buffer, 80, format, argp);
+	drawLineAt(pos, buffer);
+	va_end(argp);
 }
 
 void
