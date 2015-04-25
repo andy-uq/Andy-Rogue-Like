@@ -119,10 +119,19 @@ level_t* readLevel(gameState_t* game, level_t* level)
 	return level;
 }
 
+void initPlayer(player_t* player)
+{
+	player->position = { 1, 1 };
+	player->attack = 100;
+	player->defense = 100;
+	player->hp = 20;
+	player->damage = 10;
+}
+
 void initGame(gameState_t* game)
 {
 	level_t* level = &game->currentLevel;
-	game->player.position = { 1, 1 };
+	initPlayer(&game->player);
 	
 	level->filename = "level01.txt";
 

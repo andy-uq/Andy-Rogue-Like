@@ -6,6 +6,9 @@
 
 #include "types.h"
 
+void init_genrand(unsigned long s);
+double genrand_real1();
+
 /* strings */
 char* str_append(char* dest, const char* source);
 char* str_trimend(char* str);

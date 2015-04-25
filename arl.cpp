@@ -254,10 +254,15 @@ bool moveMob(gameState_t* game, monster_t* mob)
 
 	if (intersects(game->player.position, newPos))
 	{
-		if (mob->attack >= game->player.defense)
+		auto attack = (int )(genrand_real1() * 1.5 * mob->attack);
+		auto defense = (int )(genrand_real1() * 1.5 * game->player.defense);
+		debugf("monster rolled %d and player rolled %d", attack, defense);
+
+		if (attack >= defense)
 		{
-			game->player.hp -= mob->damage;
-			statusf("Monster did %d dmg to player", mob->damage);
+			auto damage = (int )(genrand_real1() * mob->damage);
+			game->player.hp -= damage;
+			statusf("Monster did %d dmg to player", damage);
 		}
 
 		return true;
@@ -333,10 +338,22 @@ bool bump(player_t* player, v2i pos, monster_t* mobs)
 			continue;
 
 		player->target = m;
-		if (player->attack >= m->defense)
+
+		auto attack = (int )(genrand_real1() * 1.5 * player->attack);
+		auto defense = ( int )(genrand_real1() * 1.5 * m->defense);
+		debugf("player rolled %d and monster rolled %d", attack, defense);
+		if (attack >= defense)
 		{
-			m->hp -= player->damage;
-			statusf("Did %d dmg to monster %d", player->damage, monsterId);
+			auto damage = ( int )(genrand_real1() * player->damage);
+			m->hp -= damage;
+			if (m->hp > 0)
+			{
+				statusf("Did %d dmg to monster %d", damage, monsterId);
+			}
+			else
+			{
+				statusf("Killed monster %d", monsterId);
+			}
 		}
 
 		return true;
@@ -373,5 +390,6 @@ void processInput(const game_input input)
 
 void initGame()
 {
+	init_genrand(0);
 	initGame(&_game);
 }
