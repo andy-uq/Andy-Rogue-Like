@@ -2,6 +2,7 @@
 
 /* memory */
 void* allocate(size_t size);
+char* alloc_s(const char* source);
 void* allocateTransient(size_t size);
 
 memoryArena_t* allocateArena(size_t size);

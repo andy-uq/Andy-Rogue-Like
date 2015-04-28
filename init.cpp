@@ -29,6 +29,31 @@ int readMonster(const char* filename, level_t* level)
 }
 
 internal
+int readItem(const char* filename, level_t* level)
+{
+	file_t* file;
+	if (!openFileForRead(filename, &file))
+		return 0;
+
+	int itemCount = 0;
+
+	char* line;
+	while ((line = readLine(file)) != NULL)
+	{
+		if (str_startswith(line, "END_ITEM"))
+			itemCount++;
+	}
+
+	seek(file, 0L);
+	level->items = (item_t*)allocate(sizeof(item_t) * (itemCount + 1));
+
+	loadItems(file, level->items);
+	freeFile(file);
+
+	return itemCount;
+}
+
+internal
 int readMap(const char* filename, gameState_t* game, level_t* level)
 {
 	file_t* file;
@@ -111,6 +136,12 @@ level_t* readLevel(gameState_t* game, level_t* level)
 		if (parseKey(buffer, "MONSTER", &value))
 		{
 			if (!readMonster(value, level))
+				return NULL;
+		}
+
+		if (parseKey(buffer, "ITEM", &value))
+		{
+			if (!readItem(value, level))
 				return NULL;
 		}
 	}

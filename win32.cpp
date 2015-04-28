@@ -11,15 +11,16 @@ int _fdwSaveOldMode;
 bool _alive;
 
 struct {
-	int totalSize, transientSize;
+	int totalSize, transientSize, stringSize;
 	byte* base;
 	byte* transient;
-} _memory { 1 << 20, 256 << 10 };
+	byte* string;
+} _memory { 1 << 20, 256 << 10, 256 << 10 };
 
 struct {
 	byte* head;
 	size_t available;
-} _alloced, _transient;
+} _alloced, _transient, _string;
 
 memoryArena_t* freeList;
 memoryArena_t arenaStore;
@@ -329,6 +330,32 @@ allocateTransient(size_t size)
 	return alloc;
 }
 
+void
+resetTransient()
+{
+	_transient.head = _memory.transient;
+	_transient.available = _memory.transientSize;
+}
+
+char*
+alloc_s(const char* string)
+{
+	char* p = (char* )_string.head;
+	char* result = p;
+
+	while (*string)
+	{
+		(*p) = *string;
+		string++;
+	}
+
+	*p = 0;
+	_string.head = p + 1;
+
+	return result;
+}
+
+
 internal
 void initArena()
 {
@@ -399,13 +426,6 @@ freeArena(memoryArena_t* arena) {
 	}
 
 	arena->head = (arena->tail - arena->size);
-}
-
-void
-resetTransient()
-{
-	_transient.head = _memory.transient;
-	_transient.available = _memory.transientSize;
 }
 
 int
@@ -491,6 +511,7 @@ _tmain()
 	LPVOID BaseAddress = (LPVOID)(2LL<<40);
 
 	_memory.base = (byte* )VirtualAlloc(BaseAddress, _memory.totalSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+	_memory.string = (void*)((char*)_memory.base + (_memory.totalSize - _memory.transientSize - _memory.stringSize));
 	_alloced.head = _memory.base;
 	_alloced.available = (_memory.totalSize - _memory.transientSize);
 	

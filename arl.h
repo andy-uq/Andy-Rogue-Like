@@ -37,6 +37,7 @@ void saveGame(gameState_t* game);
 void loadGame(gameState_t* game);
 void loadMonster(file_t* file, monster_t* monster);
 void loadMonsters(file_t* file, collection_t* monsters);
+void loadItems(file_t* file, item_t* items);
 
 /* map */
 bool isDoor(mapElement_t* e);

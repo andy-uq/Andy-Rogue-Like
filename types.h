@@ -53,6 +53,10 @@ struct mapElement_t {
 	elementType_t type;
 };
 
+struct item_t {
+	char glyph;
+	char* name;
+};
 
 struct monster_t
 {
@@ -86,6 +90,7 @@ struct level_t
 	v2i size;
 
 	collection_t* mobs;
+	item_t* items;
 };
 
 struct gameState_t
