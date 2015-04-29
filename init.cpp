@@ -29,7 +29,7 @@ int readMonster(const char* filename, level_t* level)
 }
 
 internal
-int readItem(const char* filename, level_t* level)
+item_t* readItem(const char* filename)
 {
 	file_t* file;
 	if (!openFileForRead(filename, &file))
@@ -45,12 +45,37 @@ int readItem(const char* filename, level_t* level)
 	}
 
 	seek(file, 0L);
-	level->items = (item_t*)allocate(sizeof(item_t) * (itemCount + 1));
+	auto items = (item_t*)allocate(sizeof(item_t) * (itemCount + 1));
 
-	loadItems(file, level->items);
+	loadItems(file, items);
 	freeFile(file);
 
-	return itemCount;
+	return items;
+}
+
+internal
+int readLevelItem(const char* filename, level_t* level)
+{
+	file_t* file;
+	if (!openFileForRead(filename, &file))
+		return 0;
+
+	char* line;
+	while ((line = readLine(file)) != NULL)
+	{
+		str_trim(&line);
+
+		if (line[0] == '#')
+			continue;
+
+		// TODO: read item and place at mapElement
+		level->items = 0;
+	}
+
+
+	freeFile(file);
+
+	return 1;
 }
 
 internal
@@ -141,7 +166,7 @@ level_t* readLevel(gameState_t* game, level_t* level)
 
 		if (parseKey(buffer, "ITEM", &value))
 		{
-			if (!readItem(value, level))
+			if (!readLevelItem(value, level))
 				return NULL;
 		}
 	}
@@ -150,6 +175,13 @@ level_t* readLevel(gameState_t* game, level_t* level)
 	return level;
 }
 
+internal
+void initItems(gameState_t* game)
+{
+	game->items = readItem("items.txt");
+}
+
+internal
 void initPlayer(player_t* player)
 {
 	player->position = { 1, 1 };
@@ -161,11 +193,12 @@ void initPlayer(player_t* player)
 
 void initGame(gameState_t* game)
 {
-	level_t* level = &game->currentLevel;
 	initPlayer(&game->player);
-	
-	level->filename = "level01.txt";
+	initItems(game);
 
+	level_t* level = &game->currentLevel;
+	level->filename = "level01.txt";
 	readLevel(game, level);
+
 	loadGame(game);
 }

@@ -345,8 +345,7 @@ alloc_s(const char* string)
 
 	while (*string)
 	{
-		(*p) = *string;
-		string++;
+		(*p++) = *string++;
 	}
 
 	*p = 0;
@@ -513,11 +512,14 @@ _tmain()
 	_memory.base = (byte* )VirtualAlloc(BaseAddress, _memory.totalSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 	_memory.string = (void*)((char*)_memory.base + (_memory.totalSize - _memory.transientSize - _memory.stringSize));
 	_alloced.head = _memory.base;
-	_alloced.available = (_memory.totalSize - _memory.transientSize);
+	_alloced.available = (_memory.totalSize - _memory.transientSize - _memory.stringSize);
+	
+	_string.head = _memory.string;
+	_string.available = _memory.stringSize;
 	
 	_memory.transient = _memory.base + (_memory.totalSize - _memory.transientSize);
 	resetTransient();
-
+	
 	initArena();
 	initGame();
 

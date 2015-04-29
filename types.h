@@ -97,4 +97,6 @@ struct gameState_t
 {
 	player_t player;
 	level_t currentLevel;
+
+	item_t* items;
 };
