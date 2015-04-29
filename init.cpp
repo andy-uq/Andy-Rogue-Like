@@ -29,7 +29,7 @@ int readMonster(const char* filename, level_t* level)
 }
 
 internal
-item_t* readItem(const char* filename)
+collection_t* readItem(const char* filename)
 {
 	file_t* file;
 	if (!openFileForRead(filename, &file))
@@ -45,7 +45,7 @@ item_t* readItem(const char* filename)
 	}
 
 	seek(file, 0L);
-	auto items = (item_t*)allocate(sizeof(item_t) * (itemCount + 1));
+	auto items = createCollection(itemCount, sizeof(item_t));
 
 	loadItems(file, items);
 	freeFile(file);

@@ -340,8 +340,8 @@ resetTransient()
 char*
 alloc_s(const char* string)
 {
-	char* p = (char* )_string.head;
-	char* result = p;
+	auto result = _string.head;
+	auto p = result;
 
 	while (*string)
 	{
@@ -351,7 +351,7 @@ alloc_s(const char* string)
 	*p = 0;
 	_string.head = p + 1;
 
-	return result;
+	return (char* )result;
 }
 
 
@@ -510,7 +510,7 @@ _tmain()
 	LPVOID BaseAddress = (LPVOID)(2LL<<40);
 
 	_memory.base = (byte* )VirtualAlloc(BaseAddress, _memory.totalSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-	_memory.string = (void*)((char*)_memory.base + (_memory.totalSize - _memory.transientSize - _memory.stringSize));
+	_memory.string = _memory.base + (_memory.totalSize - _memory.transientSize - _memory.stringSize);
 	_alloced.head = _memory.base;
 	_alloced.available = (_memory.totalSize - _memory.transientSize - _memory.stringSize);
 	

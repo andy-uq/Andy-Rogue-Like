@@ -65,7 +65,7 @@ void loadItem(file_t* file, item_t* item)
 	}
 }
 
-void loadItems(file_t* file, item_t* i)
+void loadItems(file_t* file, collection_t* items)
 {
 	char* buffer;
 	while ((buffer = readLine(file)) != NULL)
@@ -75,11 +75,8 @@ void loadItems(file_t* file, item_t* i)
 		if (buffer[0] == '#')
 			continue;
 
+		auto i = (item_t* )newItem(items, sizeof(item_t));
 		*i = { '$' };
 		loadItem(file, i);
-
-		i++;
 	}
-
-	i->glyph = 0;
 }
