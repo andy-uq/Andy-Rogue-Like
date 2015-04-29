@@ -12,13 +12,17 @@ bool _alive;
 
 struct {
 	int totalSize, transientSize;
-	void* base;
-	void* transient;
+	byte* base;
+	byte* transient;
 } _memory { 1 << 20, 256 << 10 };
 
 struct {
-	void* head;
+	byte* head;
+	size_t available;
 } _alloced, _transient;
+
+memoryArena_t* freeList;
+memoryArena_t arenaStore;
 
 struct win32_file_t
 {
@@ -307,23 +311,101 @@ drawCharAt(const v2i pos, char c)
 void*
 allocate(size_t size)
 {
-	void* alloc = _alloced.head;
-	_alloced.head = (char* )_alloced.head + size;
+	if (_alloced.available < size)
+		return 0;
+
+	byte* alloc = _alloced.head;
+	_alloced.head = _alloced.head + size;
+	_alloced.available -= size;
+
 	return alloc;
 }
 
 void*
 allocateTransient(size_t size)
 {
-	void* alloc = _transient.head;
-	_transient.head = (char* )_transient.head + size;
+	byte* alloc = _transient.head;
+	_transient.head = _transient.head + size;
 	return alloc;
+}
+
+internal
+void initArena()
+{
+	arenaStore.size = sizeof(memoryArena_t) * 100;
+	arenaStore.head = (byte*)allocate(arenaStore.size);
+	arenaStore.tail = arenaStore.head + arenaStore.size;
+}
+
+memoryArena_t*
+allocateArena(size_t size)
+{
+	if (freeList) {
+		memoryArena_t* best = 0;
+		for (auto p = freeList; p; p = p->next) {
+			if (p->size > size)
+			{
+				if (!best || best->size > p->size) {
+					best = p;
+				}
+			}
+		}
+
+		if (best)
+			return best;
+	}
+
+	auto pArenaStore = &arenaStore;
+	memoryArena_t* arena = (memoryArena_t*)arenaAlloc(&pArenaStore, sizeof(memoryArena_t));
+	if (pArenaStore != &arenaStore)
+		arenaStore = *pArenaStore;
+
+	arena->size = size;
+	arena->head = (byte*)allocate(size);
+	arena->tail = arena->head + arenaStore.size;
+
+	return arena;
+}
+
+void*
+arenaAlloc(memoryArena_t** pArena, size_t size)
+{
+	auto arena = *pArena;
+	size_t available = arena->tail - arena->head;
+	if (available < size)
+	{
+		int newSize = max(size, arena->size);
+		*pArena = (memoryArena_t *)allocateArena(newSize);
+		(*pArena)->next = arena;
+		arena = *pArena;
+	}
+
+	byte* alloc = arena->head;
+	arena->head += size;
+	return alloc;
+}
+
+void
+freeArena(memoryArena_t* arena) {
+	if (freeList) {
+		auto p = freeList;
+		while (p->next)
+			p++;
+
+		p->next = arena;
+	}
+	else {
+		freeList = arena;
+	}
+
+	arena->head = (arena->tail - arena->size);
 }
 
 void
 resetTransient()
 {
 	_transient.head = _memory.transient;
+	_transient.available = _memory.transientSize;
 }
 
 int
@@ -407,11 +489,15 @@ _tmain()
 		return 1;
 
 	LPVOID BaseAddress = (LPVOID)(2LL<<40);
-	_memory.base = VirtualAlloc(BaseAddress, _memory.totalSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-	_memory.transient = (void* )((char* )_memory.base + (_memory.totalSize - _memory.transientSize));
-	_alloced.head = _memory.base;
-	_transient.head = _memory.transient;
 
+	_memory.base = (byte* )VirtualAlloc(BaseAddress, _memory.totalSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+	_alloced.head = _memory.base;
+	_alloced.available = (_memory.totalSize - _memory.transientSize);
+	
+	_memory.transient = _memory.base + (_memory.totalSize - _memory.transientSize);
+	resetTransient();
+
+	initArena();
 	initGame();
 
 	_alive = true;

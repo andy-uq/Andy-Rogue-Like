@@ -1,7 +1,32 @@
 #pragma once
 
+typedef unsigned char byte;
+typedef unsigned int uint;
+
 struct v2i {
 	int x, y;
+};
+
+struct memoryArena_t
+{
+	byte* head;
+	byte* tail;
+	size_t size;
+	memoryArena_t* next;
+};
+
+struct collectionNode_t
+{
+	void* item;
+	collectionNode_t *next;
+};
+
+struct collection_t
+{
+	collectionNode_t* head;
+	memoryArena_t* itemStorage;
+	memoryArena_t* storage;
+	int capacity;
 };
 
 struct file_t
@@ -60,7 +85,7 @@ struct level_t
 	mapElement_t* map;
 	v2i size;
 
-	monster_t* mobs;
+	collection_t* mobs;
 };
 
 struct gameState_t

@@ -117,7 +117,7 @@ void loadMonster(file_t* file, monster_t* monster)
 	}
 }
 
-void loadMonsters(file_t* file, monster_t* m)
+void loadMonsters(file_t* file, collection_t* monsters)
 {
 	char* buffer;
 	while ((buffer = readLine(file)) != NULL)
@@ -127,11 +127,8 @@ void loadMonsters(file_t* file, monster_t* m)
 		if (buffer[0] == '#')
 			continue;
 
-		*m = { 'M' };
-		loadMonster(file, m);
-
-		m++;
+		auto monster = (monster_t* )newItem(monsters, sizeof(monster_t));
+		*monster = { 'M' };
+		loadMonster(file, monster);
 	}
-
-	m->glyph = 0;
 }

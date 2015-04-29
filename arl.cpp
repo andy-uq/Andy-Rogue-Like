@@ -102,7 +102,7 @@ renderMap(level_t* map)
 			drawCharAt(toScreenCoord(p), c);
 		}
 
-	for (monster_t* m = _game.currentLevel.mobs; m && m->glyph; m++)
+	foreach(monster_t*, m, _game.currentLevel.mobs)
 	{
 		if (m->hp > 0)
 		{
@@ -268,7 +268,7 @@ bool moveMob(gameState_t* game, monster_t* mob)
 		return true;
 	}
 
-	for (monster_t* m = game->currentLevel.mobs; m->glyph; m++)
+	foreach (monster_t*, m, game->currentLevel.mobs)
 	{
 		if (m == mob)
 			continue;
@@ -296,7 +296,7 @@ badMove:
 internal
 void moveMobs(gameState_t* game)
 {
-	for (monster_t* m = game->currentLevel.mobs; m && m->glyph; m++)
+	foreach (monster_t*, m, game->currentLevel.mobs)
 	{
 		if (m->hp <= 0)
 			continue;
@@ -328,10 +328,10 @@ int openDoor(level_t* level, v2i pos)
 }
 
 internal
-bool bump(player_t* player, v2i pos, monster_t* mobs)
+bool bump(player_t* player, v2i pos, collection_t* mobs)
 {
 	int monsterId = 0;
-	for (monster_t* m = mobs; m->glyph; m++)
+	foreach (monster_t*, m, mobs)
 	{
 		monsterId++;
 		if (m->hp <= 0 || !intersects(pos, m->position))

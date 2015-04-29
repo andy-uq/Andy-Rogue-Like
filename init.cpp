@@ -20,7 +20,7 @@ int readMonster(const char* filename, level_t* level)
 	}
 
 	seek(file, 0L);
-	level->mobs = (monster_t* )allocate(sizeof(monster_t) * (monsterCount + 1));
+	level->mobs = createCollection(monsterCount, sizeof(monster_t));
 
 	loadMonsters(file, level->mobs);
 	freeFile(file);

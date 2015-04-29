@@ -81,6 +81,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="arl.cpp" />
+    <ClCompile Include="collection.cpp" />
     <ClCompile Include="file.cpp" />
     <ClCompile Include="init.cpp" />
     <ClCompile Include="loadgame.cpp" />

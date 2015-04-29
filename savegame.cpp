@@ -84,7 +84,7 @@ internal void saveDoors(file_t* saveGame, mapElement_t* map)
 	writeFileComment(saveGame, "END_DOORS");
 }
 
-internal void saveMonsters(file_t* saveGame, monster_t* mobs)
+internal void saveMonsters(file_t* saveGame, collection_t* mobs)
 {
 	if (!mobs)
 		return;
@@ -92,7 +92,7 @@ internal void saveMonsters(file_t* saveGame, monster_t* mobs)
 	writeFileComment(saveGame, "MONSTERS");
 
 	int monsterId = 1;
-	for (monster_t* m = mobs; m->glyph; m++)
+	foreach(monster_t*, m, mobs)
 	{
 		writeFileKeyValue(saveGame, "MONSTER", "%d", monsterId);
 		writeFileKeyValue(saveGame, "POSITION", "%d %d", m->position.x, m->position.y);

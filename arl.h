@@ -6,6 +6,15 @@
 
 #include "types.h"
 
+collection_t* createCollection(size_t initialSize, size_t itemSize);
+void add(collection_t* collection, void* item);
+void* newItem(collection_t* collection, size_t sizeofItem);
+void* getAt(collection_t* collection, uint index);
+int count(collection_t* collection);
+
+#define foreach(as, i, collection) auto collectionIterator = collection->head; \
+								   for(auto i = (as)collectionIterator->item; collectionIterator; collectionIterator = collectionIterator->next, i = collectionIterator ? (as )collectionIterator->item : 0)
+
 void init_genrand(unsigned long s);
 double genrand_real1();
 
@@ -27,7 +36,7 @@ void processInput(const game_input input);
 void saveGame(gameState_t* game);
 void loadGame(gameState_t* game);
 void loadMonster(file_t* file, monster_t* monster);
-void loadMonsters(file_t* file, monster_t* monster);
+void loadMonsters(file_t* file, collection_t* monsters);
 
 /* map */
 bool isDoor(mapElement_t* e);

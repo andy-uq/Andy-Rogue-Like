@@ -54,7 +54,7 @@ int monster(const char* key, const char* value, gameState_t* game)
 
 	int targetId = atoi(value);
 	int monsterId = 1;
-	for (monster_t* m = game->currentLevel.mobs; m->glyph; m++)
+	foreach(monster_t*, m, game->currentLevel.mobs)
 	{
 		if (monsterId == targetId)
 		{
@@ -176,7 +176,8 @@ void beginParse(file_t* file, char* buffer, gameState_t* game)
 		const char* value = parseValue(buffer);
 		int monsterId = atoi(value);
 
-		loadMonster(file, &game->currentLevel.mobs[monsterId - 1]);
+		auto monster = (monster_t* )getAt(game->currentLevel.mobs, monsterId - 1);
+		loadMonster(file, monster);
 		return;
 	}
 	
