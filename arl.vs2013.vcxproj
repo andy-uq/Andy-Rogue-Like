@@ -88,7 +88,6 @@
     <ClCompile Include="file.c" />
     <ClCompile Include="init.c" />
     <ClCompile Include="inventory.c" />
-    <ClCompile Include="item.c" />
     <ClCompile Include="loadgame.c" />
     <ClCompile Include="loadmonster.c" />
     <ClCompile Include="map.c" />
