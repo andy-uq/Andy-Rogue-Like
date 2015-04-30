@@ -1,4 +1,5 @@
 #include "arl.h"
+#include<string.h>
 
 char* str_append(char* dest, const char* source)
 {
@@ -50,7 +51,7 @@ void str_trim(char** line)
 	}
 }
 
-bool str_endswith(const char* target, const char* compareTo)
+boolean str_endswith(const char* target, const char* compareTo)
 {
 	const char* pTarget = target;
 	const char* pCompareTo = compareTo;
@@ -81,7 +82,7 @@ bool str_endswith(const char* target, const char* compareTo)
 	return true;
 }
 
-bool str_startswith(const char* target, const char* compareTo)
+boolean str_startswith(const char* target, const char* compareTo)
 {
 	const char* pTarget = target;
 	const char* pCompareTo = compareTo;
@@ -99,4 +100,9 @@ bool str_startswith(const char* target, const char* compareTo)
 	}
 
 	return true;
+}
+
+boolean str_equals(const char* target, const char* compareTo)
+{
+	return _stricmp(target, compareTo) == 0;
 }
