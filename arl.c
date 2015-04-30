@@ -1,4 +1,5 @@
 #include "arl.h"
+#include "memory.h"
 #include "platform.h"
 
 #include <stdio.h>
@@ -7,7 +8,7 @@
 #include <stdarg.h>
 
 v2i _screenSize = { 20, 10 };
-gameState_t _game = {};
+gameState_t _game = {0};
 char* _statusMessage = 0;
 
 internal
@@ -16,22 +17,22 @@ v2i toScreenCoord(v2i pos)
 	int xOffset = (80 - _screenSize.x) / 2;
 	int yOffset = (25 - _screenSize.y) / 2;
 
-	return { pos.x + xOffset, pos.y + yOffset };
+	return (v2i){ pos.x + xOffset, pos.y + yOffset };
 }
 
 void statusf(char* format, ...)
 {
 	va_list argp;
 	va_start(argp, format);
-	_statusMessage = (char*)allocateTransient(512);
+	_statusMessage = (char*)trans_alloc(512);
 	vsprintf_s(_statusMessage, 512, format, argp);
 	debug(_statusMessage);
 	va_end(argp);
 }
 
-bool clamp(v2i* pos, int x, int y)
+boolean clamp(v2i* pos, int x, int y)
 {
-	bool clamped = false;
+	boolean clamped = false;
 
 	if (pos->x < 0)
 	{
@@ -66,7 +67,7 @@ renderMap(level_t* map)
 	v2i mapOffset = { _game.player.position.x - (_screenSize.x / 2), _game.player.position.y - (_screenSize.y / 2) };
 	clamp(&mapOffset, map->size.x - _screenSize.x, map->size.y - _screenSize.y);
 
-	v2i p = {};
+	v2i p = {0};
 	for (p.x = 0; p.x < _screenSize.x; p.x++)
 		for (p.y = 0; p.y < _screenSize.y; p.y++)
 		{
@@ -118,19 +119,19 @@ renderMap(level_t* map)
 internal
 void renderStats(player_t* player)
 {
-	drawLineAt({ 65, 2 }, "PLAYER:");
-	drawfLineAt({ 65, 3 }, "HP: %d", player->hp);
-	drawfLineAt({ 65, 4 }, "Attack: %d", player->attack);
-	drawfLineAt({ 65, 5 }, "Defense: %d", player->defense);
-	drawfLineAt({ 65, 6 }, "Damage: %d", player->damage);
+	drawLineAt((v2i){ 65, 2 }, "PLAYER:");
+	drawfLineAt((v2i){ 65, 3 }, "HP: %d", player->hp);
+	drawfLineAt((v2i){ 65, 4 }, "Attack: %d", player->attack);
+	drawfLineAt((v2i){ 65, 5 }, "Defense: %d", player->defense);
+	drawfLineAt((v2i){ 65, 6 }, "Damage: %d", player->damage);
 
 	if (player->target)
 	{
-		drawLineAt({ 65, 7 }, "TARGET:");
-		drawfLineAt({ 65, 8 }, "HP: %d", player->target->hp);
-		drawfLineAt({ 65, 9 }, "Attack: %d", player->target->attack);
-		drawfLineAt({ 65, 10 }, "Defense: %d", player->target->defense);
-		drawfLineAt({ 65, 11 }, "Damage: %d", player->target->damage);
+		drawLineAt((v2i){ 65, 7 }, "TARGET:");
+		drawfLineAt((v2i){ 65, 8 }, "HP: %d", player->target->hp);
+		drawfLineAt((v2i){ 65, 9 }, "Attack: %d", player->target->attack);
+		drawfLineAt((v2i){ 65, 10 }, "Defense: %d", player->target->defense);
+		drawfLineAt((v2i){ 65, 11 }, "Damage: %d", player->target->damage);
 	}
 }
 
@@ -151,7 +152,7 @@ updateAndRender()
 #define abs(x) ((x) > 0 ? (x) : -(x))
 
 internal 
-bool canSee(level_t* level, v2i source, v2i target)
+boolean canSee(level_t* level, v2i source, v2i target)
 {
 	v2i p = { abs(target.x - source.x), abs(target.y - source.y) };
 	double m = p.x == 0 ? NAN : ( double )p.y / ( double )p.x;
@@ -165,7 +166,7 @@ bool canSee(level_t* level, v2i source, v2i target)
 
 		for (v2i i = source; p.x > 0; p.x--)
 		{
-			auto e = level->map[i.y * level->size.x + i.x].type;
+			elementType_t e = level->map[i.y * level->size.x + i.x].type;
 			if (e != OPEN_DOOR && e != FLOOR)
 				return false;
 
@@ -193,7 +194,7 @@ bool canSee(level_t* level, v2i source, v2i target)
 
 		for (v2i i = source; p.y > 0; p.y--)
 		{
-			auto e = level->map[i.y * level->size.x + i.x].type;
+			elementType_t e = level->map[i.y * level->size.x + i.x].type;
 			if (e != OPEN_DOOR && e != FLOOR)
 				return false;
 
@@ -230,13 +231,13 @@ v2i moveTowards(v2i from, v2i towards)
 }
 
 internal
-bool intersects(v2i source, v2i target)
+boolean intersects(v2i source, v2i target)
 {
 	return (source.x == target.x && source.y == target.y);
 }
 
 internal
-bool moveMob(gameState_t* game, monster_t* mob)
+boolean moveMob(gameState_t* game, monster_t* mob)
 {
 	v2i newPos;
 	
@@ -254,13 +255,13 @@ bool moveMob(gameState_t* game, monster_t* mob)
 
 	if (intersects(game->player.position, newPos))
 	{
-		auto attack = (int )(genrand_real1() * 1.5 * mob->attack);
-		auto defense = (int )(genrand_real1() * 1.5 * game->player.defense);
+		int attack = (int )(genrand_real1() * 1.5 * mob->attack);
+		int defense = (int )(genrand_real1() * 1.5 * game->player.defense);
 		debugf("monster rolled %d and player rolled %d", attack, defense);
 
 		if (attack >= defense)
 		{
-			auto damage = (int )(genrand_real1() * mob->damage);
+			int damage = (int )(genrand_real1() * mob->damage);
 			game->player.hp -= damage;
 			statusf("Monster did %d dmg to player", damage);
 		}
@@ -277,13 +278,13 @@ bool moveMob(gameState_t* game, monster_t* mob)
 			goto badMove;
 	}
 
-	elementType_t mapElement = getMapElement(&game->currentLevel, newPos);
+	elementType_t mapElement = getMapElement(&game->currentLevel, newPos.x, newPos.y);
 	if (mapElement == OPEN_DOOR || mapElement == FLOOR)
 	{
 		mob->position = newPos;
 		if (intersects(mob->position, mob->target))
 		{
-			mob->target = { 0, 0 };
+			mob->target = (v2i ){ 0, 0 };
 		}
 
 		return true;
@@ -328,7 +329,7 @@ int openDoor(level_t* level, v2i pos)
 }
 
 internal
-bool bump(player_t* player, v2i pos, collection_t* mobs)
+boolean bump(player_t* player, v2i pos, collection_t* mobs)
 {
 	int monsterId = 0;
 	foreach (monster_t*, m, mobs)
@@ -339,12 +340,12 @@ bool bump(player_t* player, v2i pos, collection_t* mobs)
 
 		player->target = m;
 
-		auto attack = (int )(genrand_real1() * 1.5 * player->attack);
-		auto defense = ( int )(genrand_real1() * 1.5 * m->defense);
+		int attack = (int )(genrand_real1() * 1.5 * player->attack);
+		int defense = ( int )(genrand_real1() * 1.5 * m->defense);
 		debugf("player rolled %d and monster rolled %d", attack, defense);
 		if (attack >= defense)
 		{
-			auto damage = ( int )(genrand_real1() * player->damage);
+			int damage = ( int )(genrand_real1() * player->damage);
 			m->hp -= damage;
 			if (m->hp > 0)
 			{
@@ -367,19 +368,19 @@ void processInput(const game_input input)
 	if (!(input.xOffset || input.yOffset))
 		return;
 	
-	v2i new_pos = { _game.player.position.x + input.xOffset, _game.player.position.y + input.yOffset };
-	int mapElement = getMapElement(&_game.currentLevel, new_pos);
+	v2i newPos = { _game.player.position.x + input.xOffset, _game.player.position.y + input.yOffset };
+	int mapElement = getMapElement(&_game.currentLevel, newPos.x, newPos.y);
 	switch (mapElement)
 	{
 	case 1:
 		return;
 	case 2:
-		openDoor(&_game.currentLevel, new_pos);
+		openDoor(&_game.currentLevel, newPos);
 		return;
 	default:
-		if (!bump(&_game.player, new_pos, _game.currentLevel.mobs))
+		if (!bump(&_game.player, newPos, _game.currentLevel.mobs))
 		{
-			_game.player.position = new_pos;
+			_game.player.position = newPos;
 		}
 		break;
 	}
@@ -391,5 +392,5 @@ void processInput(const game_input input)
 void initGame()
 {
 	init_genrand(0);
-	initGame(&_game);
+	initGameStruct(&_game);
 }

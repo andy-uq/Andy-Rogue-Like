@@ -1,6 +1,7 @@
 #include <string.h>
 
 #include "arl.h"
+#include "memory.h"
 #include "platform.h"
 
 internal
@@ -45,7 +46,7 @@ collection_t* readItem(const char* filename)
 	}
 
 	seek(file, 0L);
-	auto items = createCollection(itemCount, sizeof(item_t));
+	collection_t* items = createCollection(itemCount, sizeof(item_t));
 
 	loadItems(file, items);
 	freeFile(file);
@@ -85,7 +86,7 @@ int readMap(const char* filename, gameState_t* game, level_t* level)
 	if (!openFileForRead(filename, &file))
 		return 0;
 
-	void* memory = allocate((file->size + 1) * sizeof(mapElement_t));
+	void* memory = alloc(&level->storage, (file->size + 1) * sizeof(mapElement_t));
 	level->map = (mapElement_t*)memory;
 
 	mapElement_t* ptr = level->map;
@@ -96,7 +97,7 @@ int readMap(const char* filename, gameState_t* game, level_t* level)
 		int xOffset = 0;
 		while (*line)
 		{
-			*ptr = {};
+			*ptr = (mapElement_t ){0};
 			switch (*line)
 			{
 			case '#':
@@ -150,7 +151,7 @@ level_t* readLevel(gameState_t* game, level_t* level)
 			continue;
 
 		char* value;
-		if (parseKey(buffer, "MAP", &value))
+		if (tryGetValueIfKey(buffer, "MAP", &value))
 		{
 			if (!readMap(value, game, level))
 				return NULL;
@@ -158,13 +159,13 @@ level_t* readLevel(gameState_t* game, level_t* level)
 			continue;
 		}
 
-		if (parseKey(buffer, "MONSTER", &value))
+		if (tryGetValueIfKey(buffer, "MONSTER", &value))
 		{
 			if (!readMonster(value, level))
 				return NULL;
 		}
 
-		if (parseKey(buffer, "ITEM", &value))
+		if (tryGetValueIfKey(buffer, "ITEM", &value))
 		{
 			if (!readLevelItem(value, level))
 				return NULL;
@@ -184,14 +185,14 @@ void initItems(gameState_t* game)
 internal
 void initPlayer(player_t* player)
 {
-	player->position = { 1, 1 };
+	player->position = (v2i ) { 1, 1 };
 	player->attack = 100;
 	player->defense = 100;
 	player->hp = 20;
 	player->damage = 10;
 }
 
-void initGame(gameState_t* game)
+void initGameStruct(gameState_t* game)
 {
 	initPlayer(&game->player);
 	initItems(game);

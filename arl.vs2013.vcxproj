@@ -53,10 +53,13 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <TreatWarningAsError>true</TreatWarningAsError>
+      <DisableSpecificWarnings>4204</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <TargetMachine>NotSet</TargetMachine>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -80,22 +83,24 @@
     <Text Include="ReadMe.md" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="arl.cpp" />
-    <ClCompile Include="collection.cpp" />
-    <ClCompile Include="file.cpp" />
-    <ClCompile Include="init.cpp" />
-    <ClCompile Include="inventory.cpp" />
-    <ClCompile Include="item.cpp" />
-    <ClCompile Include="loadgame.cpp" />
-    <ClCompile Include="loadmonster.cpp" />
-    <ClCompile Include="map.cpp" />
-    <ClCompile Include="random.cpp" />
-    <ClCompile Include="savegame.cpp" />
-    <ClCompile Include="string.cpp" />
-    <ClCompile Include="win32.cpp" />
+    <ClCompile Include="arl.c" />
+    <ClCompile Include="collection.c" />
+    <ClCompile Include="file.c" />
+    <ClCompile Include="init.c" />
+    <ClCompile Include="inventory.c" />
+    <ClCompile Include="item.c" />
+    <ClCompile Include="loadgame.c" />
+    <ClCompile Include="loadmonster.c" />
+    <ClCompile Include="map.c" />
+    <ClCompile Include="memory.c" />
+    <ClCompile Include="random.c" />
+    <ClCompile Include="savegame.c" />
+    <ClCompile Include="string.c" />
+    <ClCompile Include="win32.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="arl.h" />
+    <ClInclude Include="memory.h" />
     <ClInclude Include="platform.h" />
     <ClInclude Include="types.h" />
   </ItemGroup>

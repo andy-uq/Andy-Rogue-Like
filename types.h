@@ -3,17 +3,16 @@
 typedef unsigned char byte;
 typedef unsigned int uint;
 
-struct v2i {
-	int x, y;
-};
+typedef unsigned char boolean;
+#define true ((boolean )1)
+#define false ((boolean )0)
 
-struct memoryArena_t
-{
-	byte* head;
-	byte* tail;
-	size_t size;
-	memoryArena_t* next;
-};
+typedef struct {
+	int x, y;
+} v2i;
+
+typedef struct memoryArena_t memoryArena_t;
+typedef struct collectionNode_t collectionNode_t;
 
 struct collectionNode_t
 {
@@ -21,44 +20,42 @@ struct collectionNode_t
 	collectionNode_t *next;
 };
 
-struct collection_t
+typedef struct
 {
 	collectionNode_t* head;
 	memoryArena_t* itemStorage;
 	memoryArena_t* storage;
 	int capacity;
-};
+} collection_t;
 
-struct file_t
+typedef struct
 {
 	int size;
-};
+} file_t;
 
-struct game_input {
+typedef struct {
 	short xOffset, yOffset;
-	bool quit;
-};
+	boolean quit;
+} game_input;
 
-enum elementType_t {
+typedef enum elementType_t {
 	FLOOR,
 	WALL,
 	DOOR,
 	OPEN_DOOR,
-
-
 	END_OF_MAP
-};
+} elementType_t;
 
-struct mapElement_t {
+typedef struct {
 	elementType_t type;
-};
+} mapElement_t;
 
-struct item_t {
+typedef struct {
 	char glyph;
-	char* name;
-};
+	const char* name;
+} item_t;
 
-struct monster_t
+typedef struct 
 {
 	char glyph;
 	v2i position;
@@ -70,9 +67,9 @@ struct monster_t
 	int attack;
 	int defense;
 	int damage;
-};
+} monster_t;
 
-struct player_t {
+typedef struct {
 	v2i position;
 
 	int hp;
@@ -81,22 +78,24 @@ struct player_t {
 	int damage;
 
 	monster_t* target;
-};
+} player_t;
 
-struct level_t
+typedef struct 
 {
+	memoryArena_t* storage;
+
 	const char* filename;
 	mapElement_t* map;
 	v2i size;
 
 	collection_t* mobs;
 	item_t* items;
-};
+} level_t;
 
-struct gameState_t
+typedef struct
 {
 	player_t player;
 	level_t currentLevel;
 
 	collection_t* items;
-};
+} gameState_t;

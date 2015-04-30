@@ -11,7 +11,7 @@ void writeFileComment(file_t* file, const char* commentFormat, ...)
 	char line[512];
 	va_list args;
 	va_start(args, commentFormat);
-	vsnprintf_s(comment, sizeof(comment), commentFormat, args);
+	vsnprintf_s(comment, sizeof(comment), _TRUNCATE, commentFormat, args);
 	va_end(args);
 
 	char* write = line;
@@ -33,7 +33,7 @@ void writeFileLine(file_t* file, const char* format, ...)
 	char line[512];
 	va_list args;
 	va_start(args, format);
-	vsnprintf_s(line, sizeof(line), format, args);
+	vsnprintf_s(line, sizeof(line), _TRUNCATE, format, args);
 	va_end(args);
 
 	char* write = line;
@@ -54,7 +54,7 @@ void writeFileKeyValue(file_t* file, const char* key, const char* valueFormat, .
 	char line[512];
 	va_list args;
 	va_start(args, valueFormat);
-	vsnprintf_s(value, sizeof(value), valueFormat, args);
+	vsnprintf_s(value, sizeof(value), _TRUNCATE, valueFormat, args);
 	va_end(args);
 
 	char* write = str_append(line, key);
@@ -67,7 +67,8 @@ void writeFileKeyValue(file_t* file, const char* key, const char* valueFormat, .
 	writeLine(file, line);
 }
 
-internal void saveDoors(file_t* saveGame, mapElement_t* map)
+internal 
+void saveDoors(file_t* saveGame, mapElement_t* map)
 {
 	writeFileComment(saveGame, "DOORS");
 
@@ -84,7 +85,8 @@ internal void saveDoors(file_t* saveGame, mapElement_t* map)
 	writeFileComment(saveGame, "END_DOORS");
 }
 
-internal void saveMonsters(file_t* saveGame, collection_t* mobs)
+internal 
+void saveMonsters(file_t* saveGame, collection_t* mobs)
 {
 	if (!mobs)
 		return;

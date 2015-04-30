@@ -4,53 +4,22 @@
 #include <tchar.h>
 
 #include "arl.h"
+#include "memory.h"
 #include "platform.h"
 
 HANDLE _hStdin, _hStdout, _hActiveBuffer, _hBackBuffer;
 int _fdwSaveOldMode;
-bool _alive;
+boolean _alive;
 
-struct {
-	int totalSize, transientSize, stringSize;
-	byte* base;
-	byte* transient;
-	byte* string;
-} _memory { 1 << 20, 256 << 10, 256 << 10 };
-
-struct {
-	byte* head;
-	size_t available;
-} _alloced, _transient, _string;
-
-memoryArena_t* freeList;
-memoryArena_t arenaStore;
-
-struct win32_file_t
+typedef struct
 {
 	file_t fileInfo;
 	FILE* fs;
 	char* buffer;
-};
+} win32_file_t;
 
 #define READBUFFERSIZE (8 * (1 << 10))
 #define WRITEBUFFERSIZE (8 * (1 << 10))
-
-void debug(wchar_t* outputString)
-{
-	OutputDebugStringW(outputString);
-	OutputDebugStringW(_T("\n"));
-}
-
-void debugf(const wchar_t* format, ...)
-{
-	va_list argp; 
-	va_start(argp, format);
-	wchar_t buffer[512];
-	vswprintf_s(buffer, 512, format, argp);
-	OutputDebugStringW(buffer);
-	OutputDebugStringW(_T("\n"));
-	va_end(argp);
-}
 
 void debug(char* outputString)
 {
@@ -120,7 +89,7 @@ int win32_init()
 		return 1;
 	}
 
-	CONSOLE_CURSOR_INFO cursorInfo = {};
+	CONSOLE_CURSOR_INFO cursorInfo = { 0 };
 	cursorInfo.bVisible = false;
 	cursorInfo.dwSize = 100;
 
@@ -186,7 +155,7 @@ game_input readInput()
 		128,         // size of read buffer 
 		&cNumRead);
 
-	game_input input = {};
+	game_input input = {0};
 	for (DWORD i = 0; i < cNumRead; i++)
 	{
 		switch (irInBuf[i].EventType)
@@ -204,7 +173,7 @@ internal
 int beginRender()
 {
 	DWORD write;
-	FillConsoleOutputCharacter(_hBackBuffer, _T(' '), 80 * 25, {}, &write);
+	FillConsoleOutputCharacter(_hBackBuffer, _T(' '), 80 * 25, (COORD){ 0 }, &write);
 	return 0;
 }
 
@@ -233,7 +202,7 @@ drawToBuffer(const char *text)
 	if (!text)
 		return;
 
-	COORD coordBufCoord = {}, coordBufSize = { 80, 2 };
+	COORD coordBufCoord = {0}, coordBufSize = { 80, 2 };
 	SMALL_RECT srctWriteRect = { 0, 0, 80, 2 };
 
 	CHAR_INFO textBuffer[160]; 
@@ -255,7 +224,7 @@ drawToBuffer(const char *text)
 }
 
 void 
-drawLineAt(v2i pos, const char *text)
+drawLineAt(const v2i pos, const char *text)
 {
 	if (!text)
 		return;
@@ -270,8 +239,8 @@ drawLineAt(v2i pos, const char *text)
 		textBuffer[length].Attributes = 0x0f;
 	}
 
-	COORD coordBufCoord = {}, coordBufSize = { length, 1 };
-	SMALL_RECT srctWriteRect = { (short)pos.x, (short)pos.y, (short)pos.x + length, (short)pos.y + 1 };
+	COORD coordBufCoord = {0}, coordBufSize = { .X = length, .Y = 1 };
+	SMALL_RECT writeRect = { .Left = (short)pos.x, .Top = (short)pos.y, .Right = (short)pos.x + length, .Bottom = (short)pos.y + 1 };
 
 	// Copy from the temporary textBuffer to the new screen textBuffer. 
 	WriteConsoleOutput(
@@ -279,11 +248,11 @@ drawLineAt(v2i pos, const char *text)
 		textBuffer,			// textBuffer to copy from 
 		coordBufSize,		// col-row size of chiBuffer 
 		coordBufCoord,		// top left src cell in chiBuffer 
-		&srctWriteRect);	// dest. screen textBuffer rectangle 
+		&writeRect);	// dest. screen textBuffer rectangle 
 }
 
 void
-drawfLineAt(v2i pos, const char *format, ...)
+drawfLineAt(const v2i pos, const char *format, ...)
 {
 	char buffer[80];
 	va_list argp;
@@ -294,137 +263,19 @@ drawfLineAt(v2i pos, const char *format, ...)
 }
 
 void
-drawCharAt(const v2i pos, char c)
+drawCharAt(const v2i pos, const char c)
 {
-	CHAR_INFO chiBuffer = {};
+	CHAR_INFO chiBuffer = {0};
 	chiBuffer.Attributes = 0x07;
 	chiBuffer.Char.AsciiChar = c;
 
-	SMALL_RECT writeRect = { (short)pos.x, (short)pos.y, (short)pos.x + 1, (short)pos.y + 1 };
+	SMALL_RECT writeRect = { .Left = (short)pos.x, .Top = (short)pos.y, .Right = (short)pos.x + 1, .Bottom = (short)pos.y + 1 };
 	WriteConsoleOutput(
 		_hBackBuffer,
 		&chiBuffer,
-		{ 1, 1 },
-		{},
+		(COORD) { 1, 1 },
+		(COORD) { 0 },
 		&writeRect);
-}
-
-void*
-allocate(size_t size)
-{
-	if (_alloced.available < size)
-		return 0;
-
-	byte* alloc = _alloced.head;
-	_alloced.head = _alloced.head + size;
-	_alloced.available -= size;
-
-	return alloc;
-}
-
-void*
-allocateTransient(size_t size)
-{
-	byte* alloc = _transient.head;
-	_transient.head = _transient.head + size;
-	return alloc;
-}
-
-void
-resetTransient()
-{
-	_transient.head = _memory.transient;
-	_transient.available = _memory.transientSize;
-}
-
-char*
-alloc_s(const char* string)
-{
-	auto result = _string.head;
-	auto p = result;
-
-	while (*string)
-	{
-		(*p++) = *string++;
-	}
-
-	*p = 0;
-	_string.head = p + 1;
-
-	return (char* )result;
-}
-
-
-internal
-void initArena()
-{
-	arenaStore.size = sizeof(memoryArena_t) * 100;
-	arenaStore.head = (byte*)allocate(arenaStore.size);
-	arenaStore.tail = arenaStore.head + arenaStore.size;
-}
-
-memoryArena_t*
-allocateArena(size_t size)
-{
-	if (freeList) {
-		memoryArena_t* best = 0;
-		for (auto p = freeList; p; p = p->next) {
-			if (p->size > size)
-			{
-				if (!best || best->size > p->size) {
-					best = p;
-				}
-			}
-		}
-
-		if (best)
-			return best;
-	}
-
-	auto pArenaStore = &arenaStore;
-	memoryArena_t* arena = (memoryArena_t*)arenaAlloc(&pArenaStore, sizeof(memoryArena_t));
-	if (pArenaStore != &arenaStore)
-		arenaStore = *pArenaStore;
-
-	arena->size = size;
-	arena->head = (byte*)allocate(size);
-	arena->tail = arena->head + arenaStore.size;
-
-	return arena;
-}
-
-void*
-arenaAlloc(memoryArena_t** pArena, size_t size)
-{
-	auto arena = *pArena;
-	size_t available = arena->tail - arena->head;
-	if (available < size)
-	{
-		int newSize = max(size, arena->size);
-		*pArena = (memoryArena_t *)allocateArena(newSize);
-		(*pArena)->next = arena;
-		arena = *pArena;
-	}
-
-	byte* alloc = arena->head;
-	arena->head += size;
-	return alloc;
-}
-
-void
-freeArena(memoryArena_t* arena) {
-	if (freeList) {
-		auto p = freeList;
-		while (p->next)
-			p++;
-
-		p->next = arena;
-	}
-	else {
-		freeList = arena;
-	}
-
-	arena->head = (arena->tail - arena->size);
 }
 
 int
@@ -434,7 +285,7 @@ openFileForWrite(const char* filename, file_t** file)
 	if (fopen_s(&fs, filename, "wb"))
 		return 0;
 
-	win32_file_t* win32_file = (win32_file_t* )allocateTransient(sizeof(win32_file_t));
+	win32_file_t* win32_file = (win32_file_t*)trans_alloc(sizeof(win32_file_t));
 	win32_file->fileInfo.size = 0;
 	win32_file->fs = fs;
 	win32_file->buffer = ((char*)win32_file) + sizeof(win32_file_t);
@@ -454,8 +305,8 @@ openFileForRead(const char* filename, file_t** file)
 	stat(filename, &st);
 	long size = st.st_size;
 
-	win32_file_t* win32_file = (win32_file_t*)allocateTransient(sizeof(win32_file_t) + READBUFFERSIZE);
-	(*win32_file) = {};
+	win32_file_t* win32_file = (win32_file_t*)trans_alloc(sizeof(win32_file_t) + READBUFFERSIZE);
+	(*win32_file) = (win32_file_t ){ 0 };
 	win32_file->fileInfo.size = size;
 	win32_file->fs = fs;
 	win32_file->buffer = ((char*)win32_file) + sizeof(win32_file_t);
@@ -507,20 +358,9 @@ _tmain()
 	if (win32_init())
 		return 1;
 
-	LPVOID BaseAddress = (LPVOID)(2LL<<40);
-
-	_memory.base = (byte* )VirtualAlloc(BaseAddress, _memory.totalSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-	_memory.string = _memory.base + (_memory.totalSize - _memory.transientSize - _memory.stringSize);
-	_alloced.head = _memory.base;
-	_alloced.available = (_memory.totalSize - _memory.transientSize - _memory.stringSize);
-	
-	_string.head = _memory.string;
-	_string.available = _memory.stringSize;
-	
-	_memory.transient = _memory.base + (_memory.totalSize - _memory.transientSize);
-	resetTransient();
-	
-	initArena();
+	LPVOID BaseAddress = (LPVOID)0x2000000;
+	byte* base = (byte* )VirtualAlloc(BaseAddress, GAME_HEAP_SIZE, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+	initMemory(base, GAME_HEAP_SIZE);
 	initGame();
 
 	_alive = true;

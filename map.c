@@ -1,6 +1,6 @@
 #include "arl.h"
 
-bool isDoor(mapElement_t* e)
+boolean isDoor(mapElement_t* e)
 {
 	return
 		e->type == DOOR
@@ -9,13 +9,9 @@ bool isDoor(mapElement_t* e)
 
 elementType_t getMapElement(level_t* level, int x, int y)
 {
-	return level->map[(y * level->size.x) + x].type;
-}
-
-elementType_t getMapElement(level_t* level, v2i pos)
-{
+	v2i pos = { x, y };
 	if (clamp(&pos, level->size.x, level->size.y))
 		return (elementType_t)-1;
 
-	return getMapElement(level, pos.x, pos.y);
+	return level->map[(y * level->size.x) + x].type;
 }
