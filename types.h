@@ -26,6 +26,7 @@ typedef struct
 	memoryArena_t* itemStorage;
 	memoryArena_t* storage;
 	int capacity;
+	int count;
 } collection_t;
 
 typedef struct
@@ -76,6 +77,8 @@ typedef struct {
 	int attack;
 	int defense;
 	int damage;
+	
+	collection_t* inventory;
 
 	monster_t* target;
 } player_t;

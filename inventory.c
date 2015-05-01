@@ -4,7 +4,6 @@
 #include "memory.h"
 #include "platform.h"
 
-internal
 void setItemProperty(const char* key, const char* value, item_t* item)
 {
 	if (str_equals("NAME", key))

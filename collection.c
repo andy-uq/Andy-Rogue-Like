@@ -10,6 +10,7 @@ collection_t* createCollection(size_t initialSize, size_t itemSize)
 	collection->storage = create_arena(initialSize * sizeof(collectionNode_t));
 	collection->itemStorage = create_arena(initialSize * itemSize);
 	collection->head = 0;
+	collection->count = 0;
 
 	return collection;
 }
@@ -20,6 +21,7 @@ void add(collection_t* collection, void* item)
 	node->item = item;
 	node->next = collection->head;
 	collection->head = node;
+	collection->count++;
 }
 
 void* newItem(collection_t* collection, size_t sizeofItem)
@@ -43,13 +45,5 @@ void* getAt(collection_t* collection, uint index)
 
 int count(collection_t* collection)
 {
-	int count = 0;
-	collectionNode_t* p = collection->head;
-	while (p)
-	{
-		count++;
-		p = p->next;
-	}
-
-	return count;
+	return collection->count;
 }

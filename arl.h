@@ -38,7 +38,9 @@ void saveGame(gameState_t* game);
 void loadGame(gameState_t* game);
 void loadMonster(file_t* file, monster_t* monster);
 void loadMonsters(file_t* file, collection_t* monsters);
+
 void loadItems(file_t* file, collection_t* items);
+void setItemProperty(const char* key, const char* value, item_t* item);
 
 /* map */
 boolean isDoor(mapElement_t* e);

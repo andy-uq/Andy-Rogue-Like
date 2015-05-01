@@ -92,6 +92,50 @@ void setPlayerProperty(const char* key, char* value, player_t* player)
 }
 
 internal
+void loadPlayerItem(file_t* file, item_t* item)
+{
+	char* buffer;
+	while ((buffer = readLine(file)) != NULL)
+	{
+		str_trim(&buffer);
+
+		if (buffer[0] == '#')
+			continue;
+
+		if (str_startswith(buffer, "END_ITEM"))
+		{
+			return;
+		}
+
+		char* key;
+		char* value;
+		parseKeyValue(buffer, &key, &value);
+		setItemProperty(key, value, item);
+	}
+}
+
+internal
+void loadPlayerInventory(file_t* file, player_t* player)
+{
+	char* buffer;
+	while ((buffer = readLine(file)) != NULL)
+	{
+		str_trim(&buffer);
+
+		if (buffer[0] == '#')
+			continue;
+
+		if (str_startswith(buffer, "END_INVENTORY"))
+		{
+			return;
+		}
+		
+		item_t* item = (item_t*)newItem(player->inventory, sizeof(item_t));
+		loadPlayerItem(file, item);
+	}
+}
+
+internal
 void loadPlayer(file_t* file, player_t* player)
 {
 	char* buffer;
@@ -105,6 +149,12 @@ void loadPlayer(file_t* file, player_t* player)
 		if (str_startswith(buffer, "END_PLAYER"))
 		{
 			return;
+		}
+
+		if (str_startswith(buffer, "INVENTORY"))
+		{
+			loadPlayerInventory(file, player);
+			continue;
 		}
 
 		char* key;

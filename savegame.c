@@ -109,6 +109,27 @@ void saveMonsters(file_t* saveGame, collection_t* mobs)
 	writeFileComment(saveGame, "MONSTERS");
 }
 
+void savePlayer(file_t* saveGame, player_t* player)
+{
+	writeFileLine(saveGame, "PLAYER");
+	writeFileKeyValue(saveGame, "POSITION", "%d %d", player->position.x, player->position.y);
+	writeFileKeyValue(saveGame, "HP", "%d", player->hp);
+	writeFileKeyValue(saveGame, "ATTACK", "%d", player->attack);
+	writeFileKeyValue(saveGame, "DEFENSE", "%d", player->defense);
+	writeFileKeyValue(saveGame, "DAMAGE", "%d", player->damage);
+
+	writeFileLine(saveGame, "INVENTORY");
+	foreach(item_t*, item, player->inventory)
+	{
+		writeFileLine(saveGame, "ITEM");
+		writeFileKeyValue(saveGame, "NAME", "%s", item->name);
+		writeFileLine(saveGame, "END_ITEM");
+	}
+	writeFileLine(saveGame, "END_INVENTORY");
+
+	writeFileLine(saveGame, "END_PLAYER");
+}
+
 void saveGame(gameState_t* game)
 {
 	file_t* saveGame;
@@ -116,14 +137,7 @@ void saveGame(gameState_t* game)
 		return;
 
 	writeFileComment(saveGame, "Savegame v1.0");
-	writeFileLine(saveGame, "PLAYER");
-	writeFileKeyValue(saveGame, "POSITION", "%d %d", game->player.position.x, game->player.position.y);
-	writeFileKeyValue(saveGame, "HP", "%d", game->player.hp);
-	writeFileKeyValue(saveGame, "ATTACK", "%d", game->player.attack);
-	writeFileKeyValue(saveGame, "DEFENSE", "%d", game->player.defense);
-	writeFileKeyValue(saveGame, "DAMAGE", "%d", game->player.damage);
-	writeFileLine(saveGame, "END_PLAYER");
-
+	savePlayer(saveGame, game->player);
 	saveDoors(saveGame, game->currentLevel.map);
 	saveMonsters(saveGame, game->currentLevel.mobs);
 
