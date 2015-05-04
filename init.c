@@ -8,23 +8,23 @@ internal
 int readMonster(const char* filename, level_t* level)
 {
 	file_t* file;
-	if (!openFileForRead(filename, &file))
+	if (!file_open_for_read(filename, &file))
 		return 0;
 
 	int monsterCount = 0;
 
 	char* line;
-	while ((line = readLine(file)) != NULL)
+	while ((line = file_read(file)) != NULL)
 	{
 		if (str_startswith(line, "END_MONSTER"))
 			monsterCount++;
 	}
 
-	seek(file, 0L);
-	level->mobs = createCollection(monsterCount, sizeof(monster_t));
+	file_seek(file, 0L);
+	level->mobs = create_collection(monsterCount, sizeof(monster_t));
 
-	loadMonsters(file, level->mobs);
-	freeFile(file);
+	load_monsters(file, level->mobs);
+	file_free(file);
 
 	return monsterCount;
 }
@@ -33,23 +33,23 @@ internal
 collection_t* readItem(const char* filename)
 {
 	file_t* file;
-	if (!openFileForRead(filename, &file))
+	if (!file_open_for_read(filename, &file))
 		return 0;
 
 	int itemCount = 0;
 
 	char* line;
-	while ((line = readLine(file)) != NULL)
+	while ((line = file_read(file)) != NULL)
 	{
 		if (str_startswith(line, "END_ITEM"))
 			itemCount++;
 	}
 
-	seek(file, 0L);
-	collection_t* items = createCollection(itemCount, sizeof(item_t));
+	file_seek(file, 0L);
+	collection_t* items = create_collection(itemCount, sizeof(item_t));
 
-	loadItems(file, items);
-	freeFile(file);
+	load_items(file, items);
+	file_free(file);
 
 	return items;
 }
@@ -58,11 +58,11 @@ internal
 int readLevelItem(const char* filename, level_t* level)
 {
 	file_t* file;
-	if (!openFileForRead(filename, &file))
+	if (!file_open_for_read(filename, &file))
 		return 0;
 
 	char* line;
-	while ((line = readLine(file)) != NULL)
+	while ((line = file_read(file)) != NULL)
 	{
 		str_trim(&line);
 
@@ -74,30 +74,30 @@ int readLevelItem(const char* filename, level_t* level)
 	}
 
 
-	freeFile(file);
+	file_free(file);
 
 	return 1;
 }
 
 internal
-int readMap(const char* filename, gameState_t* game, level_t* level)
+int readMap(const char* filename, game_t* game, level_t* level)
 {
 	file_t* file;
-	if (!openFileForRead(filename, &file))
+	if (!file_open_for_read(filename, &file))
 		return 0;
 
-	void* memory = alloc(&level->storage, (file->size + 1) * sizeof(mapElement_t));
-	level->map = (mapElement_t*)memory;
+	void* memory = arena_alloc(&level->storage, (file->size + 1) * sizeof(map_element_t));
+	level->map = (map_element_t*)memory;
 
-	mapElement_t* ptr = level->map;
+	map_element_t* ptr = level->map;
 
 	char* line;
-	while ((line = readLine(file)) != NULL)
+	while ((line = file_read(file)) != NULL)
 	{
 		int xOffset = 0;
 		while (*line)
 		{
-			*ptr = (mapElement_t ){0};
+			*ptr = (map_element_t ){0};
 			switch (*line)
 			{
 			case '#':
@@ -127,22 +127,22 @@ int readMap(const char* filename, gameState_t* game, level_t* level)
 
 	ptr->type = END_OF_MAP;
 
-	freeFile(file);
+	file_free(file);
 	return 1;
 }
 
 internal
-level_t* readLevel(gameState_t* game, level_t* level)
+level_t* readLevel(game_t* game, level_t* level)
 {
 	file_t* file;
-	if (!openFileForRead(level->filename, &file))
+	if (!file_open_for_read(level->filename, &file))
 		return 0;
 
 	const char* line;
 	char buffer_[512];
 	char* buffer = buffer_;
 
-	while ((line = readLine(file)) != NULL)
+	while ((line = file_read(file)) != NULL)
 	{
 		strncpy_s(buffer, 512, line, _TRUNCATE);
 		str_trim(&buffer);
@@ -151,7 +151,7 @@ level_t* readLevel(gameState_t* game, level_t* level)
 			continue;
 
 		char* value;
-		if (tryGetValueIfKey(buffer, "MAP", &value))
+		if (parse_value_if_match(buffer, "MAP", &value))
 		{
 			if (!readMap(value, game, level))
 				return NULL;
@@ -159,25 +159,25 @@ level_t* readLevel(gameState_t* game, level_t* level)
 			continue;
 		}
 
-		if (tryGetValueIfKey(buffer, "MONSTER", &value))
+		if (parse_value_if_match(buffer, "MONSTER", &value))
 		{
 			if (!readMonster(value, level))
 				return NULL;
 		}
 
-		if (tryGetValueIfKey(buffer, "ITEM", &value))
+		if (parse_value_if_match(buffer, "ITEM", &value))
 		{
 			if (!readLevelItem(value, level))
 				return NULL;
 		}
 	}
 
-	freeFile(file);
+	file_free(file);
 	return level;
 }
 
 internal
-void initItems(gameState_t* game)
+void initItems(game_t* game)
 {
 	game->items = readItem("items.txt");
 }
@@ -190,16 +190,17 @@ void initPlayer(player_t* player)
 	player->defense = 100;
 	player->hp = 20;
 	player->damage = 10;
+	player->inventory = create_collection(10, sizeof(item_t));
 }
 
-void initGameStruct(gameState_t* game)
+void init_game_struct(game_t* game)
 {
 	initPlayer(&game->player);
 	initItems(game);
 
-	level_t* level = &game->currentLevel;
+	level_t* level = &game->current_level;
 	level->filename = "level01.txt";
 	readLevel(game, level);
 
-	loadGame(game);
+	load_game(game);
 }

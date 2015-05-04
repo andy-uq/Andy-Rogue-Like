@@ -24,7 +24,7 @@ void writeFileComment(file_t* file, const char* commentFormat, ...)
 	*(write++) = '\n';
 	*(write++) = 0;
 
-	writeLine(file, line);
+	file_write(file, line);
 }
 
 internal
@@ -44,7 +44,7 @@ void writeFileLine(file_t* file, const char* format, ...)
 	*(write++) = '\n';
 	*(write++) = 0;
 
-	writeLine(file, line);
+	file_write(file, line);
 }
 
 internal
@@ -64,18 +64,18 @@ void writeFileKeyValue(file_t* file, const char* key, const char* valueFormat, .
 	*(write++) = '\n';
 	*(write++) = 0;
 
-	writeLine(file, line);
+	file_write(file, line);
 }
 
 internal 
-void saveDoors(file_t* saveGame, mapElement_t* map)
+void saveDoors(file_t* saveGame, map_element_t* map)
 {
 	writeFileComment(saveGame, "DOORS");
 
 	int doorId = 1;
-	for (mapElement_t* p = map; p->type != END_OF_MAP; p++)
+	for (map_element_t* p = map; p->type != END_OF_MAP; p++)
 	{
-		if (isDoor(p))
+		if (is_door(p))
 		{
 			writeFileKeyValue(saveGame, "DOOR", "%d %s", doorId, (p->type == DOOR) ? "CLOSED" : "OPEN");
 			doorId++;
@@ -130,17 +130,17 @@ void savePlayer(file_t* saveGame, player_t* player)
 	writeFileLine(saveGame, "END_PLAYER");
 }
 
-void saveGame(gameState_t* game)
+void save_game(game_t* game)
 {
 	file_t* saveGame;
-	if (!openFileForWrite("savegame.txt", &saveGame))
+	if (!file_open_for_write("savegame.txt", &saveGame))
 		return;
 
 	writeFileComment(saveGame, "Savegame v1.0");
-	savePlayer(saveGame, game->player);
-	saveDoors(saveGame, game->currentLevel.map);
-	saveMonsters(saveGame, game->currentLevel.mobs);
+	savePlayer(saveGame, &game->player);
+	saveDoors(saveGame, game->current_level.map);
+	saveMonsters(saveGame, game->current_level.mobs);
 
 	writeFileComment(saveGame, "EOF");
-	freeFile(saveGame);
+	file_free(saveGame);
 }

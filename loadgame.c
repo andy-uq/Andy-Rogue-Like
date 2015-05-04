@@ -5,14 +5,14 @@
 #include "platform.h"
 
 internal
-int monster(const char* key, char* value, gameState_t* game)
+int monster(const char* key, char* value, game_t* game)
 {
-	if (_stricmp("monster", key) || !game->currentLevel.mobs)
+	if (_stricmp("monster", key) || !game->current_level.mobs)
 		return 0;
 
 	int targetId = atoi(value);
 	int monsterId = 1;
-	foreach(monster_t*, m, game->currentLevel.mobs)
+	foreach(monster_t*, m, game->current_level.mobs)
 	{
 		if (monsterId == targetId)
 		{
@@ -35,14 +35,14 @@ int monster(const char* key, char* value, gameState_t* game)
 }
 
 internal
-void door(const char* value, gameState_t* game)
+void door(const char* value, game_t* game)
 {
 	int targetDoorId = atoi(value);
 	int doorId = 0;
-	mapElement_t* p = game->currentLevel.map;
+	map_element_t* p = game->current_level.map;
 	while (p->type != END_OF_MAP)
 	{
-		if (isDoor(p))
+		if (is_door(p))
 		{
 			doorId++;
 			if (doorId == targetDoorId)
@@ -95,7 +95,7 @@ internal
 void loadPlayerItem(file_t* file, item_t* item)
 {
 	char* buffer;
-	while ((buffer = readLine(file)) != NULL)
+	while ((buffer = file_read(file)) != NULL)
 	{
 		str_trim(&buffer);
 
@@ -109,8 +109,8 @@ void loadPlayerItem(file_t* file, item_t* item)
 
 		char* key;
 		char* value;
-		parseKeyValue(buffer, &key, &value);
-		setItemProperty(key, value, item);
+		parse_key_value(buffer, &key, &value);
+		set_item_property(key, value, item);
 	}
 }
 
@@ -118,7 +118,7 @@ internal
 void loadPlayerInventory(file_t* file, player_t* player)
 {
 	char* buffer;
-	while ((buffer = readLine(file)) != NULL)
+	while ((buffer = file_read(file)) != NULL)
 	{
 		str_trim(&buffer);
 
@@ -130,7 +130,7 @@ void loadPlayerInventory(file_t* file, player_t* player)
 			return;
 		}
 		
-		item_t* item = (item_t*)newItem(player->inventory, sizeof(item_t));
+		item_t* item = (item_t*)collection_new_item(player->inventory, sizeof(item_t));
 		loadPlayerItem(file, item);
 	}
 }
@@ -139,7 +139,7 @@ internal
 void loadPlayer(file_t* file, player_t* player)
 {
 	char* buffer;
-	while ((buffer = readLine(file)) != NULL)
+	while ((buffer = file_read(file)) != NULL)
 	{
 		str_trim(&buffer);
 
@@ -159,12 +159,12 @@ void loadPlayer(file_t* file, player_t* player)
 
 		char* key;
 		char* value;
-		parseKeyValue(buffer, &key, &value);
+		parse_key_value(buffer, &key, &value);
 		setPlayerProperty(key, value, player);
 	}
 }
 
-void beginParse(file_t* file, char* buffer, gameState_t* game)
+void beginParse(file_t* file, char* buffer, game_t* game)
 {
 	char* key;
 	char* value;
@@ -175,31 +175,31 @@ void beginParse(file_t* file, char* buffer, gameState_t* game)
 	}
 	else if (str_startswith(buffer, "MONSTER"))
 	{
-		parseKeyValue(buffer, &key, &value);
+		parse_key_value(buffer, &key, &value);
 		int monsterId = atoi(value);
 
-		monster_t* monster = (monster_t*)getAt(game->currentLevel.mobs, monsterId - 1);
-		loadMonster(file, monster);
+		monster_t* monster = (monster_t*)collection_get_at(game->current_level.mobs, monsterId - 1);
+		load_monster(file, monster);
 		return;
 	}
 	else if (str_equals(buffer, "DOOR"))
 	{
-		parseKeyValue(buffer, &key, &value);
+		parse_key_value(buffer, &key, &value);
 		door(value, game);
 	}
 }
 
-void loadGame(gameState_t* game)
+void load_game(game_t* game)
 {
 	file_t* file;
-	if (!openFileForRead("savegame.txt", &file))
+	if (!file_open_for_read("savegame.txt", &file))
 		return;
 
 	const char* line;
 	char buffer_[512];
 	char* buffer = buffer_;
 
-	while ((line = readLine(file)) != NULL)
+	while ((line = file_read(file)) != NULL)
 	{
 		strncpy_s(buffer, 512, line, _TRUNCATE);
 		str_trim(&buffer);
@@ -210,5 +210,5 @@ void loadGame(gameState_t* game)
 		beginParse(file, buffer, game);
 	}
 
-	freeFile(file);
+	file_free(file);
 }

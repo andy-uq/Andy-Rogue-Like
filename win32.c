@@ -99,7 +99,7 @@ int win32_init()
 }
 
 internal
-game_input* KeyEventProc(KEY_EVENT_RECORD ker, game_input* input)
+game_input_t* KeyEventProc(KEY_EVENT_RECORD ker, game_input_t* input)
 {
 	if (ker.bKeyDown)
 		return input;
@@ -124,19 +124,19 @@ game_input* KeyEventProc(KEY_EVENT_RECORD ker, game_input* input)
 			break;
 
 		case VK_DOWN:
-			input->yOffset = +1;
+			input->y_offset = +1;
 			break;
 
 		case VK_UP:
-			input->yOffset = -1;
+			input->y_offset = -1;
 			break;
 
 		case VK_LEFT:
-			input->xOffset = -1;
+			input->x_offset = -1;
 			break;
 
 		case VK_RIGHT:
-			input->xOffset = +1;
+			input->x_offset = +1;
 			break;
 	}
 
@@ -144,7 +144,7 @@ game_input* KeyEventProc(KEY_EVENT_RECORD ker, game_input* input)
 }
 
 internal
-game_input readInput()
+game_input_t readInput()
 {
 	INPUT_RECORD irInBuf[128];
 	DWORD cNumRead;
@@ -155,7 +155,7 @@ game_input readInput()
 		128,         // size of read buffer 
 		&cNumRead);
 
-	game_input input = {0};
+	game_input_t input = {0};
 	for (DWORD i = 0; i < cNumRead; i++)
 	{
 		switch (irInBuf[i].EventType)
@@ -197,7 +197,7 @@ int win32_close()
 }
 
 void 
-drawToBuffer(const char *text)
+draw_to_buffer(const char *text)
 {
 	if (!text)
 		return;
@@ -224,7 +224,7 @@ drawToBuffer(const char *text)
 }
 
 void 
-drawLineAt(const v2i pos, const char *text)
+draw_line(const v2i pos, const char *text)
 {
 	if (!text)
 		return;
@@ -252,18 +252,18 @@ drawLineAt(const v2i pos, const char *text)
 }
 
 void
-drawfLineAt(const v2i pos, const char *format, ...)
+drawf_line(const v2i pos, const char *format, ...)
 {
 	char buffer[80];
 	va_list argp;
 	va_start(argp, format);
 	vsprintf_s(buffer, 80, format, argp);
-	drawLineAt(pos, buffer);
+	draw_line(pos, buffer);
 	va_end(argp);
 }
 
 void
-drawCharAt(const v2i pos, const char c)
+draw_char(const v2i pos, const char c)
 {
 	CHAR_INFO chiBuffer = {0};
 	chiBuffer.Attributes = 0x07;
@@ -279,13 +279,13 @@ drawCharAt(const v2i pos, const char c)
 }
 
 int
-openFileForWrite(const char* filename, file_t** file)
+file_open_for_write(const char* filename, file_t** file)
 {
 	FILE* fs;
 	if (fopen_s(&fs, filename, "wb"))
 		return 0;
 
-	win32_file_t* win32_file = (win32_file_t*)trans_alloc(sizeof(win32_file_t));
+	win32_file_t* win32_file = (win32_file_t*)transient_alloc(sizeof(win32_file_t));
 	win32_file->fileInfo.size = 0;
 	win32_file->fs = fs;
 	win32_file->buffer = ((char*)win32_file) + sizeof(win32_file_t);
@@ -295,7 +295,7 @@ openFileForWrite(const char* filename, file_t** file)
 }
 
 int
-openFileForRead(const char* filename, file_t** file)
+file_open_for_read(const char* filename, file_t** file)
 {
 	FILE* fs;
 	if (fopen_s(&fs, filename, "rb"))
@@ -305,7 +305,7 @@ openFileForRead(const char* filename, file_t** file)
 	stat(filename, &st);
 	long size = st.st_size;
 
-	win32_file_t* win32_file = (win32_file_t*)trans_alloc(sizeof(win32_file_t) + READBUFFERSIZE);
+	win32_file_t* win32_file = (win32_file_t*)transient_alloc(sizeof(win32_file_t) + READBUFFERSIZE);
 	(*win32_file) = (win32_file_t ){ 0 };
 	win32_file->fileInfo.size = size;
 	win32_file->fs = fs;
@@ -316,7 +316,7 @@ openFileForRead(const char* filename, file_t** file)
 }
 
 void
-writeLine(const file_t* file, const char* line)
+file_write(const file_t* file, const char* line)
 {
 	win32_file_t* win32_file = (win32_file_t*)file;
 	int bytes = fputs(line, win32_file->fs);
@@ -324,14 +324,14 @@ writeLine(const file_t* file, const char* line)
 }
 
 char* 
-readLine(const file_t* file)
+file_read(const file_t* file)
 {
 	win32_file_t* win32_file = (win32_file_t*)file;
 	return fgets(win32_file->buffer, READBUFFERSIZE, win32_file->fs);
 }
 
 long
-seek(const file_t* file, long offset)
+file_seek(const file_t* file, long offset)
 {
 	win32_file_t* win32_file = (win32_file_t*)file;
 	if (offset < 0)
@@ -343,7 +343,7 @@ seek(const file_t* file, long offset)
 }
 
 void 
-freeFile(const file_t* file) 
+file_free(const file_t* file) 
 {
 	if (file)
 	{
@@ -360,19 +360,19 @@ _tmain()
 
 	LPVOID BaseAddress = (LPVOID)0x2000000;
 	byte* base = (byte* )VirtualAlloc(BaseAddress, GAME_HEAP_SIZE, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-	initMemory(base, GAME_HEAP_SIZE);
-	initGame();
+	memory_init(base, GAME_HEAP_SIZE);
+	init_game();
 
 	_alive = true;
 	while (_alive)
 	{
-		resetTransient();
+		transient_reset();
 		beginRender();
-		updateAndRender();
+		update_and_render();
 		renderComplete();
 
-		game_input input = readInput();
-		processInput(input);
+		game_input_t input = readInput();
+		process_input(input);
 	}
 
 	win32_close();

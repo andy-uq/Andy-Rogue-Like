@@ -6,17 +6,19 @@
 
 #include "types.h"
 
-collection_t* createCollection(size_t initialSize, size_t itemSize);
-void add(collection_t* collection, void* item);
-void* newItem(collection_t* collection, size_t sizeofItem);
-void* getAt(collection_t* collection, uint index);
-int count(collection_t* collection);
+collection_t* create_collection(size_t initialSize, size_t itemSize);
+void collection_add(collection_t* collection, void* item);
+void* collection_new_item(collection_t* collection, size_t sizeofItem);
+void* collection_get_at(collection_t* collection, uint index);
+int collection_count(collection_t* collection);
 
-#define foreach(as, iterator, collection) collectionNode_t* __collectionIterator = collection->head; \
-								   for(as iterator = (as)__collectionIterator->item; __collectionIterator; __collectionIterator = __collectionIterator->next, iterator = __collectionIterator ? (as )__collectionIterator->item : (as )0)
+#define foreach(as, iterator, collection) collection_node_t* __collectionIterator = collection->head; \
+								   for(as iterator = (__collectionIterator ? (as )__collectionIterator->item : 0) \
+										; __collectionIterator \
+										; __collectionIterator = __collectionIterator->next, iterator = (__collectionIterator ? (as )__collectionIterator->item : 0))
 
-void init_genrand(unsigned long s);
-double genrand_real1();
+void rand_init(unsigned long s);
+double rand_r();
 
 /* strings */
 char* str_append(char* dest, const char* source);
@@ -30,23 +32,22 @@ boolean str_equals(const char* target, const char* compareTo);
 boolean clamp(v2i* pos, int maxX, int maxY);
 
 /* game */
-void initGame();
-void initGameStruct(gameState_t* game);
-void updateAndRender();
-void processInput(const game_input input);
-void saveGame(gameState_t* game);
-void loadGame(gameState_t* game);
-void loadMonster(file_t* file, monster_t* monster);
-void loadMonsters(file_t* file, collection_t* monsters);
+void init_game();
+void init_game_struct(game_t* game);
+void update_and_render();
+void process_input(const game_input_t input);
+void save_game(game_t* game);
+void load_game(game_t* game);
+void load_monster(file_t* file, monster_t* monster);
+void load_monsters(file_t* file, collection_t* monsters);
 
-void loadItems(file_t* file, collection_t* items);
-void setItemProperty(const char* key, const char* value, item_t* item);
+void load_items(file_t* file, collection_t* items);
+void set_item_property(const char* key, const char* value, item_t* item);
 
 /* map */
-boolean isDoor(mapElement_t* e);
-elementType_t getMapElement(level_t* level, int x, int y);
+boolean is_door(map_element_t* e);
+element_type_t get_map_element(level_t* level, int x, int y);
 
 /* files */
-boolean tryGetValueIfKey(char* buffer, const char* key, char** value);
-void parseKeyValue(char* line, char** key, char** value);
-
+boolean parse_value_if_match(char* buffer, const char* key, char** value);
+void parse_key_value(char* line, char** key, char** value);

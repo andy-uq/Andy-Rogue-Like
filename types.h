@@ -11,20 +11,20 @@ typedef struct {
 	int x, y;
 } v2i;
 
-typedef struct memoryArena_t memoryArena_t;
-typedef struct collectionNode_t collectionNode_t;
+typedef struct arena_t arena_t;
+typedef struct collection_node_t collection_node_t;
 
-struct collectionNode_t
+struct collection_node_t
 {
 	void* item;
-	collectionNode_t *next;
+	collection_node_t *next;
 };
 
 typedef struct
 {
-	collectionNode_t* head;
-	memoryArena_t* itemStorage;
-	memoryArena_t* storage;
+	collection_node_t* head;
+	arena_t* item_storage;
+	arena_t* node_storage;
 	int capacity;
 	int count;
 } collection_t;
@@ -35,21 +35,21 @@ typedef struct
 } file_t;
 
 typedef struct {
-	short xOffset, yOffset;
+	short x_offset, y_offset;
 	boolean quit;
-} game_input;
+} game_input_t;
 
-typedef enum elementType_t {
+typedef enum {
 	FLOOR,
 	WALL,
 	DOOR,
 	OPEN_DOOR,
 	END_OF_MAP
-} elementType_t;
+} element_type_t;
 
 typedef struct {
-	elementType_t type;
-} mapElement_t;
+	element_type_t type;
+} map_element_t;
 
 typedef struct {
 	char glyph;
@@ -85,10 +85,10 @@ typedef struct {
 
 typedef struct 
 {
-	memoryArena_t* storage;
+	arena_t* storage;
 
 	const char* filename;
-	mapElement_t* map;
+	map_element_t* map;
 	v2i size;
 
 	collection_t* mobs;
@@ -98,7 +98,7 @@ typedef struct
 typedef struct
 {
 	player_t player;
-	level_t currentLevel;
+	level_t current_level;
 
 	collection_t* items;
-} gameState_t;
+} game_t;

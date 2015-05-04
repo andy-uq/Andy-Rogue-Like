@@ -48,10 +48,10 @@ void setMonsterProperty(const char* key, char* value, monster_t* monster)
 	}
 }
 
-void loadMonster(file_t* file, monster_t* monster)
+void load_monster(file_t* file, monster_t* monster)
 {
 	char* buffer;
-	while ((buffer = readLine(file)) != NULL)
+	while ((buffer = file_read(file)) != NULL)
 	{
 		str_trim(&buffer);
 
@@ -65,23 +65,23 @@ void loadMonster(file_t* file, monster_t* monster)
 
 		char* key;
 		char* value;
-		parseKeyValue(buffer, &key, &value);
+		parse_key_value(buffer, &key, &value);
 		setMonsterProperty(key, value, monster);
 	}
 }
 
-void loadMonsters(file_t* file, collection_t* monsters)
+void load_monsters(file_t* file, collection_t* monsters)
 {
 	char* buffer;
-	while ((buffer = readLine(file)) != NULL)
+	while ((buffer = file_read(file)) != NULL)
 	{
 		str_trim(&buffer);
 	
 		if (buffer[0] == '#')
 			continue;
 
-		monster_t* monster = (monster_t* )newItem(monsters, sizeof(monster_t));
+		monster_t* monster = (monster_t* )collection_new_item(monsters, sizeof(monster_t));
 		*monster = (monster_t ){ 'M' };
-		loadMonster(file, monster);
+		load_monster(file, monster);
 	}
 }

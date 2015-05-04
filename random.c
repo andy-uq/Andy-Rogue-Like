@@ -11,7 +11,7 @@ static unsigned long mt[N]; /* the array for the state vector  */
 static int mti = N + 1; /* mti==N+1 means mt[N] is not initialized */
 
 /* initializes mt[N] with a seed */
-void init_genrand(unsigned long s)
+void rand_init(unsigned long s)
 {
 	mt[0] = s & 0xffffffffUL;
 	for (mti = 1; mti<N; mti++)
@@ -34,7 +34,7 @@ void init_genrand(unsigned long s)
 void init_by_array(unsigned long init_key[], int key_length)
 {
 	int i, j, k;
-	init_genrand(19650218UL);
+	rand_init(19650218UL);
 
 	i = 1; j = 0;
 	k = (N>key_length ? N : key_length);
@@ -82,7 +82,7 @@ unsigned long genrand_int32(void)
 		int kk;
 
 		if (mti == N + 1)   /* if init_genrand() has not been called, */
-			init_genrand(5489UL); /* a default initial seed is used */
+			rand_init(5489UL); /* a default initial seed is used */
 
 		for (kk = 0; kk<N - M; kk++)
 		{
@@ -118,7 +118,7 @@ long genrand_int31(void)
 }
 
 /* generates a random number on [0,1]-real-interval */
-double genrand_real1(void)
+double rand_r(void)
 {
 	return 
 		genrand_int32() * 

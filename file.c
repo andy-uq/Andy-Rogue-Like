@@ -1,48 +1,48 @@
 #include "arl.h"
 
 internal
-char* parseValue(char* line)
+char* parse_value(char* buffer)
 {
-	while (*line != '=')
+	while (*buffer != '=')
 	{
-		if (*line == 0)
-			return line;
+		if (*buffer == 0)
+			return buffer;
 
-		line++;
+		buffer++;
 	}
 
-	(*line) = 0;
+	(*buffer) = 0;
 
-	char* value = line + 1;
+	char* value = buffer + 1;
 	str_trim(&value);
 
 	return value;
 }
 
-void parseKeyValue(char* line, char** key, char** value)
+void parse_key_value(char* buffer, char** key, char** value)
 {
-	*key = line;
-	*value = parseValue(line);
+	*key = buffer;
+	*value = parse_value(buffer);
 
 	str_trim(key);
 	str_trim(value);
 }
 
-boolean tryGetValueIfKey(char* buffer, const char* key, char** value)
+boolean parse_value_if_match(char* buffer, const char* target, char** value)
 {
 	while (*buffer)
 	{
-		if (*key == 0)
+		if (*target == 0)
 		{
 			*value = buffer + 1;
 			return true;
 		}
 
-		if (*buffer != *key)
+		if (*buffer != *target)
 			break;
 
 		buffer++;
-		key++;
+		target++;
 	}
 
 	return false;

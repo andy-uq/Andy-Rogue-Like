@@ -4,14 +4,14 @@
 
 #define GAME_HEAP_SIZE (128u << 20)
 
-void initMemory(byte* baseAddress, size_t size);
-void resetTransient();
+void memory_init(byte* baseAddress, size_t size);
+void transient_reset();
 
-memoryArena_t* create_arena(size_t size);
-void release_arena(memoryArena_t* arena);
+arena_t* arena_create(size_t size);
+void arena_destroy(arena_t* arena);
 
-const char* str_alloc(const char* source);
-void* trans_alloc(size_t size);
-void* alloc(memoryArena_t** arena, size_t size);
+const char* string_alloc(const char* source);
+void* transient_alloc(size_t size);
+void* arena_alloc(arena_t** arena, size_t size);
 
 
