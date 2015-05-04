@@ -5,36 +5,6 @@
 #include "platform.h"
 
 internal
-int monster(const char* key, char* value, game_t* game)
-{
-	if (_stricmp("monster", key) || !game->current_level.mobs)
-		return 0;
-
-	int targetId = atoi(value);
-	int monsterId = 1;
-	foreach(monster_t*, m, game->current_level.mobs)
-	{
-		if (monsterId == targetId)
-		{
-			char *next_token = NULL;
-			char* p = strtok_s(value, " ", &next_token);
-			m->position.x = atoi(next_token);
-
-			p = strtok_s(NULL, " ", &next_token);
-			m->position.y = atoi(next_token);
-			
-			p = strtok_s(NULL, " ", &next_token);
-			m->energy = atoi(next_token);
-			return 1;
-		}
-
-		monsterId++;
-	}
-
-	return 1;
-}
-
-internal
 void door(const char* value, game_t* game)
 {
 	int targetDoorId = atoi(value);

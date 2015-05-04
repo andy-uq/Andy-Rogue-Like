@@ -42,11 +42,13 @@ void load_monster(file_t* file, monster_t* monster);
 void load_monsters(file_t* file, collection_t* monsters);
 
 void load_items(file_t* file, collection_t* items);
+item_t* find_item(collection_t* items, int id);
 void set_item_property(const char* key, const char* value, item_t* item);
 
 /* map */
 boolean is_door(map_element_t* e);
-element_type_t get_map_element(level_t* level, int x, int y);
+map_element_t* get_map_element(level_t* level, int x, int y);
+element_type_t get_map_element_type(level_t* level, int x, int y);
 
 /* files */
 boolean parse_value_if_match(char* buffer, const char* key, char** value);

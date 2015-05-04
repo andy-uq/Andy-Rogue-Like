@@ -7,11 +7,17 @@ boolean is_door(map_element_t* e)
 		|| e->type == OPEN_DOOR;
 }
 
-element_type_t get_map_element(level_t* level, int x, int y)
+map_element_t* get_map_element(level_t* level, int x, int y)
 {
 	v2i pos = { x, y };
 	if (clamp(&pos, level->size.x, level->size.y))
-		return (element_type_t)-1;
+		return 0;
 
-	return level->map[(y * level->size.x) + x].type;
+	return &level->map[(y * level->size.x) + x];
+}
+
+element_type_t get_map_element_type(level_t* level, int x, int y)
+{
+	map_element_t* tile = get_map_element(level, x, y);
+	return tile ? tile->type : -1;
 }

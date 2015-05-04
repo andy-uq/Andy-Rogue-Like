@@ -1,11 +1,12 @@
 #include <string.h>
+#include <stdlib.h>
 
 #include "arl.h"
 #include "memory.h"
 #include "platform.h"
 
 internal
-int readMonster(const char* filename, level_t* level)
+int read_monster(const char* filename, level_t* level)
 {
 	file_t* file;
 	if (!file_open_for_read(filename, &file))
@@ -30,7 +31,7 @@ int readMonster(const char* filename, level_t* level)
 }
 
 internal
-collection_t* readItem(const char* filename)
+collection_t* read_item(const char* filename)
 {
 	file_t* file;
 	if (!file_open_for_read(filename, &file))
@@ -55,32 +56,59 @@ collection_t* readItem(const char* filename)
 }
 
 internal
-int readLevelItem(const char* filename, level_t* level)
+boolean is_id(item_t* item, int id)
+{
+	return item->id == id;
+}
+
+internal
+int read_level_item(const char* filename, collection_t* items, level_t* level)
 {
 	file_t* file;
 	if (!file_open_for_read(filename, &file))
 		return 0;
 
-	char* line;
-	while ((line = file_read(file)) != NULL)
+	char* buffer;
+	while ((buffer = file_read(file)) != NULL)
 	{
-		str_trim(&line);
+		str_trim(&buffer);
 
-		if (line[0] == '#')
+		if (buffer[0] == '#')
 			continue;
 
-		// TODO: read item and place at mapElement
-		level->items = 0;
+		char *context, *token, *value;
+		int id, x, y;
+
+		parse_value_if_match(buffer, "ITEM", &value);
+
+		token = strtok_s(value, " ", &context);
+		id = atoi(token);
+
+		token = strtok_s(NULL, " ", &context);
+		x = atoi(token);
+
+		token = strtok_s(NULL, " ", &context);
+		y = atoi(token);
+
+		item_t* item = find_item(items, id);
+		if (item)
+		{
+			map_element_t* map = get_map_element(level, x, y);
+			if (!map->items)
+				map->items = create_collection(0, 0);
+
+			collection_add(map->items, item);
+		}
+
+		break;
 	}
 
-
 	file_free(file);
-
 	return 1;
 }
 
 internal
-int readMap(const char* filename, game_t* game, level_t* level)
+int read_map(const char* filename, game_t* game, level_t* level)
 {
 	file_t* file;
 	if (!file_open_for_read(filename, &file))
@@ -132,7 +160,7 @@ int readMap(const char* filename, game_t* game, level_t* level)
 }
 
 internal
-level_t* readLevel(game_t* game, level_t* level)
+level_t* read_level(game_t* game, level_t* level)
 {
 	file_t* file;
 	if (!file_open_for_read(level->filename, &file))
@@ -153,7 +181,7 @@ level_t* readLevel(game_t* game, level_t* level)
 		char* value;
 		if (parse_value_if_match(buffer, "MAP", &value))
 		{
-			if (!readMap(value, game, level))
+			if (!read_map(value, game, level))
 				return NULL;
 
 			continue;
@@ -161,13 +189,13 @@ level_t* readLevel(game_t* game, level_t* level)
 
 		if (parse_value_if_match(buffer, "MONSTER", &value))
 		{
-			if (!readMonster(value, level))
+			if (!read_monster(value, level))
 				return NULL;
 		}
 
 		if (parse_value_if_match(buffer, "ITEM", &value))
 		{
-			if (!readLevelItem(value, level))
+			if (!read_level_item(value, game->items, level))
 				return NULL;
 		}
 	}
@@ -177,13 +205,13 @@ level_t* readLevel(game_t* game, level_t* level)
 }
 
 internal
-void initItems(game_t* game)
+void items_init(game_t* game)
 {
-	game->items = readItem("items.txt");
+	game->items = read_item("items.txt");
 }
 
 internal
-void initPlayer(player_t* player)
+void player_init(player_t* player)
 {
 	player->position = (v2i ) { 1, 1 };
 	player->attack = 100;
@@ -195,12 +223,12 @@ void initPlayer(player_t* player)
 
 void init_game_struct(game_t* game)
 {
-	initPlayer(&game->player);
-	initItems(game);
+	player_init(&game->player);
+	items_init(game);
 
 	level_t* level = &game->current_level;
 	level->filename = "level01.txt";
-	readLevel(game, level);
+	read_level(game, level);
 
 	load_game(game);
 }

@@ -61,6 +61,17 @@ boolean clamp(v2i* pos, int x, int y)
 	return clamped;
 }
 
+char _get_floor_glyph(map_element_t* map)
+{
+	if (map->items && map->items->head)
+	{
+		item_t* item = (item_t*)map->items->head;
+		return item->glyph;
+	}
+
+	return '.';
+}
+
 internal void
 _render_map(level_t* map)
 {
@@ -81,11 +92,11 @@ _render_map(level_t* map)
 			}
 			else
 			{
-				int mapElement = get_map_element(map, x, y);
-				switch (mapElement)
+				map_element_t* mapElement = get_map_element(map, x, y);
+				switch (mapElement->type)
 				{
 				case FLOOR:
-					c = '.';
+					c = _get_floor_glyph(mapElement);
 					break;
 				case DOOR:
 					c = '/';
@@ -278,7 +289,7 @@ boolean moveMob(game_t* game, monster_t* mob)
 			goto badMove;
 	}
 
-	element_type_t mapElement = get_map_element(&game->current_level, newPos.x, newPos.y);
+	element_type_t mapElement = get_map_element_type(&game->current_level, newPos.x, newPos.y);
 	if (mapElement == OPEN_DOOR || mapElement == FLOOR)
 	{
 		mob->position = newPos;
@@ -369,7 +380,7 @@ void process_input(const game_input_t input)
 		return;
 	
 	v2i newPos = { _game.player.position.x + input.x_offset, _game.player.position.y + input.y_offset };
-	int mapElement = get_map_element(&_game.current_level, newPos.x, newPos.y);
+	int mapElement = get_map_element_type(&_game.current_level, newPos.x, newPos.y);
 	switch (mapElement)
 	{
 	case 1:

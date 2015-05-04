@@ -49,9 +49,11 @@ typedef enum {
 
 typedef struct {
 	element_type_t type;
+	collection_t* items;
 } map_element_t;
 
 typedef struct {
+	int id;
 	char glyph;
 	const char* name;
 } item_t;
@@ -92,7 +94,6 @@ typedef struct
 	v2i size;
 
 	collection_t* mobs;
-	item_t* items;
 } level_t;
 
 typedef struct

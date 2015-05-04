@@ -1,8 +1,22 @@
 #include <string.h>
+#include <stdlib.h>
 
 #include "arl.h"
 #include "memory.h"
 #include "platform.h"
+
+item_t* find_item(collection_t* items, int id)
+{
+	foreach(item_t*, item, items)
+	{
+		if (item->id == id)
+		{
+			return item;
+		}
+	}
+
+	return 0;
+}
 
 void set_item_property(const char* key, const char* value, item_t* item)
 {
@@ -14,12 +28,19 @@ void set_item_property(const char* key, const char* value, item_t* item)
 	{
 		item->glyph = *value;
 	}
+	else if (str_equals("ID", key))
+	{
+		item->id = atoi(value);
+	}
 }
 
-internal
-void loadItem(file_t* file, item_t* item)
+void load_items(file_t* file, collection_t* items)
 {
 	char* buffer;
+	char* key;
+	char* value;
+
+	item_t* item = (item_t*)collection_new_item(items, sizeof(item_t));
 	while ((buffer = file_read(file)) != NULL)
 	{
 		str_trim(&buffer);
@@ -29,28 +50,11 @@ void loadItem(file_t* file, item_t* item)
 
 		if (str_startswith(buffer, "END_ITEM"))
 		{
-			return;
+			item = (item_t*)collection_new_item(items, sizeof(item_t));
+			continue;
 		}
 
-		char* key;
-		char* value;
 		parse_key_value(buffer, &key, &value);
 		set_item_property(key, value, item);
-	}
-}
-
-void load_items(file_t* file, collection_t* items)
-{
-	char* buffer;
-	while ((buffer = file_read(file)) != NULL)
-	{
-		str_trim(&buffer);
-
-		if (buffer[0] == '#')
-			continue;
-
-		item_t* i = (item_t*)collection_new_item(items, sizeof(item_t));
-		*i = (item_t ){ '$' };
-		loadItem(file, i);
 	}
 }
