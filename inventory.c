@@ -40,7 +40,7 @@ void load_items(file_t* file, collection_t* items)
 	char* key;
 	char* value;
 
-	item_t* item = (item_t*)collection_new_item(items, sizeof(item_t));
+	item_t* item = 0;
 	while ((buffer = file_read(file)) != NULL)
 	{
 		str_trim(&buffer);
@@ -50,8 +50,13 @@ void load_items(file_t* file, collection_t* items)
 
 		if (str_startswith(buffer, "END_ITEM"))
 		{
-			item = (item_t*)collection_new_item(items, sizeof(item_t));
+			item = 0;
 			continue;
+		}
+
+		if (!item)
+		{
+			item = (item_t*)collection_new_item(items, sizeof(item_t));
 		}
 
 		parse_key_value(buffer, &key, &value);

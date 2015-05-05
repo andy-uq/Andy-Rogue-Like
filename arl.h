@@ -9,6 +9,8 @@
 collection_t* create_collection(size_t initialSize, size_t itemSize);
 void collection_add(collection_t* collection, void* item);
 void* collection_new_item(collection_t* collection, size_t sizeofItem);
+void* collection_first(collection_t* collection);
+boolean collection_any(collection_t* collection);
 void* collection_get_at(collection_t* collection, uint index);
 int collection_count(collection_t* collection);
 

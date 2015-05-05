@@ -31,6 +31,18 @@ void* collection_new_item(collection_t* collection, size_t sizeofItem)
 	return item;
 }
 
+void* collection_first(collection_t* collection)
+{
+	collection_node_t* p = collection ? collection->head : 0;
+	return p ? p->item : p;
+}
+
+boolean collection_any(collection_t* collection)
+{
+	collection_node_t* p = collection ? collection->head : 0;
+	return p != 0;
+}
+
 void* collection_get_at(collection_t* collection, uint index)
 {
 	collection_node_t* p = collection->head;

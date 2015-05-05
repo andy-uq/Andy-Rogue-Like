@@ -63,13 +63,8 @@ boolean clamp(v2i* pos, int x, int y)
 
 char _get_floor_glyph(map_element_t* map)
 {
-	if (map->items && map->items->head)
-	{
-		item_t* item = (item_t*)map->items->head;
-		return item->glyph;
-	}
-
-	return '.';
+	item_t* item = collection_first(map->items);
+	return item ? item->glyph : '.';
 }
 
 internal void
@@ -128,7 +123,7 @@ _render_map(level_t* map)
 }
 
 internal
-void renderStats(player_t* player)
+void _render_stats(player_t* player)
 {
 	draw_line((v2i){ 65, 2 }, "PLAYER:");
 	drawf_line((v2i){ 65, 3 }, "HP: %d", player->hp);
@@ -146,6 +141,22 @@ void renderStats(player_t* player)
 	}
 }
 
+internal
+void _render_floor(level_t* current_level, player_t* player)
+{
+	map_element_t* tile = get_map_element(current_level, player->position.x, player->position.y);
+	if (collection_any(tile->items))
+	{
+		draw_line((v2i){ 65, 13 }, "FLOOR:");
+		int line = 14;
+		foreach(item_t*, item, tile->items)
+		{
+			drawf_line((v2i){ 65, line }, "%s", item->name);
+			line++;
+		}
+	}
+}
+
 void
 update_and_render()
 {
@@ -157,7 +168,8 @@ update_and_render()
 
 	draw_to_buffer(_statusMessage);
 	_render_map(&_game.current_level);
-	renderStats(&_game.player);
+	_render_stats(&_game.player);
+	_render_floor(&_game.current_level, &_game.player);
 }
 
 #define abs(x) ((x) > 0 ? (x) : -(x))

@@ -56,19 +56,13 @@ collection_t* read_item(const char* filename)
 }
 
 internal
-boolean is_id(item_t* item, int id)
-{
-	return item->id == id;
-}
-
-internal
 int read_level_item(const char* filename, collection_t* items, level_t* level)
 {
 	file_t* file;
 	if (!file_open_for_read(filename, &file))
 		return 0;
 
-	char* buffer;
+	char *buffer, *value;
 	while ((buffer = file_read(file)) != NULL)
 	{
 		str_trim(&buffer);
@@ -76,10 +70,11 @@ int read_level_item(const char* filename, collection_t* items, level_t* level)
 		if (buffer[0] == '#')
 			continue;
 
-		char *context, *token, *value;
-		int id, x, y;
+		if (!parse_value_if_match(buffer, "ITEM", &value))
+			continue;
 
-		parse_value_if_match(buffer, "ITEM", &value);
+		char *context, *token;
+		int id, x, y;
 
 		token = strtok_s(value, " ", &context);
 		id = atoi(token);
@@ -91,16 +86,14 @@ int read_level_item(const char* filename, collection_t* items, level_t* level)
 		y = atoi(token);
 
 		item_t* item = find_item(items, id);
-		if (item)
-		{
-			map_element_t* map = get_map_element(level, x, y);
-			if (!map->items)
-				map->items = create_collection(0, 0);
+		if (!item)
+			continue;
 
-			collection_add(map->items, item);
-		}
+		map_element_t* map = get_map_element(level, x, y);
+		if (!map->items)
+			map->items = create_collection(0, 0);
 
-		break;
+		collection_add(map->items, item);
 	}
 
 	file_free(file);
