@@ -93,7 +93,7 @@ int read_level_item(const char* filename, collection_t* items, level_t* level)
 		if (!map->items)
 			map->items = create_collection(0, 0);
 
-		collection_add(map->items, item);
+		collection_push(map->items, item);
 	}
 
 	file_free(file);

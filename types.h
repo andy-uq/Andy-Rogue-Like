@@ -23,6 +23,7 @@ struct collection_node_t
 typedef struct
 {
 	collection_node_t* head;
+	collection_node_t* free_list;
 	arena_t* item_storage;
 	arena_t* node_storage;
 	int capacity;
@@ -34,9 +35,16 @@ typedef struct
 	int size;
 } file_t;
 
+typedef enum
+{
+	GAME_ACTION_NONE,
+	GAME_ACTION_PICKUP,
+	GAME_ACTION_QUIT,
+} GAME_ACTION;
+
 typedef struct {
 	short x_offset, y_offset;
-	boolean quit;
+	GAME_ACTION action;
 } game_input_t;
 
 typedef enum {

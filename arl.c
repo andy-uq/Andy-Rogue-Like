@@ -142,19 +142,34 @@ void _render_stats(player_t* player)
 }
 
 internal
-void _render_floor(level_t* current_level, player_t* player)
+int _render_floor(level_t* current_level, player_t* player, int offset)
 {
 	map_element_t* tile = get_map_element(current_level, player->position.x, player->position.y);
 	if (collection_any(tile->items))
 	{
-		draw_line((v2i){ 65, 13 }, "FLOOR:");
-		int line = 14;
+		draw_line((v2i){ 65, offset++ }, "FLOOR:");
 		foreach(item_t*, item, tile->items)
 		{
-			drawf_line((v2i){ 65, line }, "%s", item->name);
-			line++;
+			drawf_line((v2i){ 65, offset++ }, "%s", item->name);
 		}
 	}
+
+	return offset;
+}
+
+internal
+int _render_inventory(player_t* player, int offset)
+{
+	if (collection_any(player->inventory))
+	{
+		draw_line((v2i){ 65, offset++ }, "INVENTORY:");
+		foreach(item_t*, item, player->inventory)
+		{
+			drawf_line((v2i){ 65, offset++ }, "%s", item->name);
+		}
+	}
+
+	return offset;
 }
 
 void
@@ -169,7 +184,9 @@ update_and_render()
 	draw_to_buffer(_statusMessage);
 	_render_map(&_game.current_level);
 	_render_stats(&_game.player);
-	_render_floor(&_game.current_level, &_game.player);
+	int offset = 13;
+	offset = _render_inventory(&_game.player, offset);
+	offset = _render_floor(&_game.current_level, &_game.player, offset);
 }
 
 #define abs(x) ((x) > 0 ? (x) : -(x))
@@ -386,29 +403,76 @@ boolean bump(player_t* player, v2i pos, collection_t* mobs)
 	return false;
 }
 
-void process_input(const game_input_t input)
+internal
+boolean _move_player(game_t* game, const game_input_t input)
 {
 	if (!(input.x_offset || input.y_offset))
-		return;
-	
-	v2i newPos = { _game.player.position.x + input.x_offset, _game.player.position.y + input.y_offset };
-	int mapElement = get_map_element_type(&_game.current_level, newPos.x, newPos.y);
+		return false;
+
+	v2i newPos = { game->player.position.x + input.x_offset, game->player.position.y + input.y_offset };
+	int mapElement = get_map_element_type(&game->current_level, newPos.x, newPos.y);
 	switch (mapElement)
 	{
-	case 1:
-		return;
-	case 2:
-		openDoor(&_game.current_level, newPos);
-		return;
-	default:
-		if (!bump(&_game.player, newPos, _game.current_level.mobs))
-		{
-			_game.player.position = newPos;
-		}
-		break;
+		case 1:
+			break;
+		case 2:
+			openDoor(&game->current_level, newPos);
+			break;
+		default:
+			if (!bump(&game->player, newPos, game->current_level.mobs))
+			{
+				game->player.position = newPos;
+			}
+			break;
 	}
 
-	moveMobs(&_game);
+	return true;
+}
+
+void _pickup_item(player_t* player, level_t* level)
+{
+	map_element_t* tile = get_player_tile(level, player);
+	item_t* item = collection_pop(tile->items);
+	if (item)
+	{
+		collection_push(player->inventory, item);
+		statusf("Picked up %s", item->name);
+	}
+	else
+	{
+		statusf("There is nothing here");
+	}
+}
+
+internal
+boolean _perform_action(game_t* game, const GAME_ACTION action)
+{
+	if (action == GAME_ACTION_NONE)
+		return false;
+
+	switch (action)
+	{
+	case GAME_ACTION_PICKUP:
+	{
+		_pickup_item(&game->player, &game->current_level);
+		return true;
+	}
+	}
+
+	return false;
+}
+
+void process_input(const game_input_t input)
+{
+	if (input.action == GAME_ACTION_QUIT)
+		return;
+
+	boolean actionTaken = _move_player(&_game, input) | _perform_action(&_game, input.action);
+	if (actionTaken)
+	{
+		moveMobs(&_game);
+	}
+
 	save_game(&_game);
 }
 

@@ -115,14 +115,6 @@ game_input_t* KeyEventProc(KEY_EVENT_RECORD ker, game_input_t* input)
 
 	switch (ker.wVirtualKeyCode)
 	{
-		case 'Q':
-			if (!ker.bKeyDown)
-			{
-				_alive = false;
-				input->quit = true;
-			}
-			break;
-
 		case VK_DOWN:
 			input->y_offset = +1;
 			break;
@@ -137,6 +129,15 @@ game_input_t* KeyEventProc(KEY_EVENT_RECORD ker, game_input_t* input)
 
 		case VK_RIGHT:
 			input->x_offset = +1;
+			break;
+
+		case 'Q':
+			_alive = false;
+			input->action = GAME_ACTION_QUIT;
+			break;
+
+		case 'P':
+			input->action = GAME_ACTION_PICKUP;
 			break;
 	}
 

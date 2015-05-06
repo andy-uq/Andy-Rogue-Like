@@ -7,7 +7,8 @@
 #include "types.h"
 
 collection_t* create_collection(size_t initialSize, size_t itemSize);
-void collection_add(collection_t* collection, void* item);
+void collection_push(collection_t* collection, void* item);
+void* collection_pop(collection_t* collection);
 void* collection_new_item(collection_t* collection, size_t sizeofItem);
 void* collection_first(collection_t* collection);
 boolean collection_any(collection_t* collection);
@@ -50,6 +51,7 @@ void set_item_property(const char* key, const char* value, item_t* item);
 /* map */
 boolean is_door(map_element_t* e);
 map_element_t* get_map_element(level_t* level, int x, int y);
+map_element_t* get_player_tile(level_t* level, player_t* player);
 element_type_t get_map_element_type(level_t* level, int x, int y);
 
 /* files */

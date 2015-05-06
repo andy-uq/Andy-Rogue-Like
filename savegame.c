@@ -121,8 +121,7 @@ void savePlayer(file_t* saveGame, player_t* player)
 	writeFileLine(saveGame, "INVENTORY");
 	foreach(item_t*, item, player->inventory)
 	{
-		writeFileLine(saveGame, "ITEM");
-		writeFileKeyValue(saveGame, "NAME", "%s", item->name);
+		writeFileKeyValue(saveGame, "ITEM", "%d", item->id);
 		writeFileLine(saveGame, "END_ITEM");
 	}
 	writeFileLine(saveGame, "END_INVENTORY");

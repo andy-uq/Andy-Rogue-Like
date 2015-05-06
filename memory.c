@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <string.h>
 
 #include "arl.h"
 #include "memory.h"
@@ -20,7 +21,7 @@ typedef struct
 struct arena_t
 {
 	byte* head;
-	byte* tail;
+	byte* alloc;
 	size_t size;
 	arena_t* next;
 };
@@ -39,6 +40,10 @@ void init_block(block_t* block, byte* baseAddress, size_t size)
 	block->tail = baseAddress + size;
 	block->size = size;
 
+#if _DEBUG
+	memset(baseAddress, 0, size);
+#endif
+
 	debugf("created block %s (0x%p) of %d bytes", block->name, block->head, size);
 }
 
@@ -50,6 +55,10 @@ void* raw_alloc(block_t* block, size_t size)
 	byte* memory = block->head;
 	block->head += size;
 	debugf("allocated %d bytes (0x%p) from %s (%d bytes remaining)", size, memory, block->name, (size_t)(block->tail - block->head));
+
+#if _DEBUG
+	memset(memory, 0, size);
+#endif
 
 	return memory;
 }
@@ -68,7 +77,7 @@ void memory_init(byte* baseAddress, size_t size)
 	arenaStore = (arena_t*)raw_alloc(&_gPermanentStore, arenaStoreSize);
 	arenaStore->size = arenaStoreSize;
 	arenaStore->head = (byte* )&arenaStore[1];
-	arenaStore->tail = arenaStore->head + arenaStore->size;
+	arenaStore->alloc = arenaStore->head;
 }
 
 void transient_reset()
@@ -79,6 +88,10 @@ void transient_reset()
 
 	debugf("reset transient (%d was used)", _gTransientStore.head - head);
 	_gTransientStore.head = head;
+
+#if _DEBUG
+	memset(_gTransientStore.head, 0, _gTransientStore.size);
+#endif
 }
 
 void* transient_alloc(size_t size)
@@ -129,7 +142,7 @@ arena_t* arena_create(size_t size)
 	arena_t* arena = (arena_t*)arena_alloc(&arenaStore, sizeof(arena_t));
 	arena->size = size;
 	arena->head = (byte*)raw_alloc(&_gPermanentStore, size);
-	arena->tail = arena->head + arenaStore->size;
+	arena->alloc = arena->head;
 	debugf("create new arena of %d bytes (0x%p)", arena->size, arena->head);
 
 	return arena;
@@ -144,9 +157,13 @@ int max(int a, int b)
 internal
 void* arena_alloc_internal(arena_t* arena, size_t size)
 {
-	byte* alloc = arena->head;
-	arena->head += size;
-	return alloc;
+	byte* memory = arena->alloc;
+	arena->alloc += size;
+
+#if _DEBUG
+	memset(memory, 0, size);
+#endif
+	return memory;
 }
 
 void* arena_alloc(arena_t** pArena, size_t size)
@@ -154,7 +171,7 @@ void* arena_alloc(arena_t** pArena, size_t size)
 	arena_t* arena = *pArena;
 	if (arena)
 	{
-		size_t available = arena->tail - arena->head;
+		size_t available = arena->size - (arena->alloc - arena->head);
 		if (available < size)
 		{
 			int newSize = max(size, arena->size);
@@ -187,6 +204,6 @@ void arena_destroy(arena_t* arena) {
 		freeList = arena;
 	}
 
-	arena->head = (arena->tail - arena->size);
+	arena->alloc = arena->head;
 	debugf("released arena of %d bytes (0x%p) back into pool", arena->size, arena->head);
 }

@@ -85,9 +85,9 @@ void loadPlayerItem(file_t* file, item_t* item)
 }
 
 internal
-void loadPlayerInventory(file_t* file, player_t* player)
+void loadPlayerInventory(file_t* file, collection_t* items, player_t* player)
 {
-	char* buffer;
+	char *buffer, *value;
 	while ((buffer = file_read(file)) != NULL)
 	{
 		str_trim(&buffer);
@@ -100,13 +100,24 @@ void loadPlayerInventory(file_t* file, player_t* player)
 			return;
 		}
 		
-		item_t* item = (item_t*)collection_new_item(player->inventory, sizeof(item_t));
-		loadPlayerItem(file, item);
+		if (parse_value_if_match(buffer, "ITEM", &value))
+		{
+			int itemId = atoi(value);
+			item_t* itemTemplate = collection_get_at(items, itemId);
+			if (itemTemplate)
+			{
+				item_t* item = collection_new_item(player->inventory, sizeof(*item));
+				item->glyph = itemTemplate->glyph;
+				item->name = itemTemplate->name;
+				item->id = itemTemplate->id;
+				loadPlayerItem(file, itemTemplate);
+			}
+		}
 	}
 }
 
 internal
-void loadPlayer(file_t* file, player_t* player)
+void loadPlayer(file_t* file, game_t* game)
 {
 	char* buffer;
 	while ((buffer = file_read(file)) != NULL)
@@ -123,14 +134,14 @@ void loadPlayer(file_t* file, player_t* player)
 
 		if (str_startswith(buffer, "INVENTORY"))
 		{
-			loadPlayerInventory(file, player);
+			loadPlayerInventory(file, game->items, &game->player);
 			continue;
 		}
 
 		char* key;
 		char* value;
 		parse_key_value(buffer, &key, &value);
-		setPlayerProperty(key, value, player);
+		setPlayerProperty(key, value, &game->player);
 	}
 }
 
@@ -141,7 +152,7 @@ void beginParse(file_t* file, char* buffer, game_t* game)
 
 	if (str_equals(buffer, "PLAYER"))
 	{
-		loadPlayer(file, &game->player);
+		loadPlayer(file, game);
 	}
 	else if (str_startswith(buffer, "MONSTER"))
 	{

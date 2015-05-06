@@ -15,9 +15,27 @@ collection_t* create_collection(size_t initialSize, size_t itemSize)
 	return collection;
 }
 
-void collection_add(collection_t* collection, void* item)
+internal
+collection_node_t* _alloc_node(collection_t* collection)
 {
-	collection_node_t* node = (collection_node_t* )arena_alloc(&collection->node_storage, sizeof(collection_node_t));
+	if (collection->free_list == 0)
+		return arena_alloc(&collection->node_storage, sizeof(collection_node_t));
+
+	collection_node_t* node = collection->free_list;
+	collection->free_list = node->next;
+	return node;
+}
+
+internal
+void _remove_node(collection_t* collection, collection_node_t* node)
+{
+	node->next = collection->free_list;
+	collection->free_list = node;
+}
+
+void collection_push(collection_t* collection, void* item)
+{
+	collection_node_t* node = _alloc_node(collection);
 	node->item = item;
 	node->next = collection->head;
 	collection->head = node;
@@ -27,7 +45,7 @@ void collection_add(collection_t* collection, void* item)
 void* collection_new_item(collection_t* collection, size_t sizeofItem)
 {
 	void* item = arena_alloc(&collection->item_storage, sizeofItem);
-	collection_add(collection, item);
+	collection_push(collection, item);
 	return item;
 }
 
@@ -35,6 +53,21 @@ void* collection_first(collection_t* collection)
 {
 	collection_node_t* p = collection ? collection->head : 0;
 	return p ? p->item : p;
+}
+
+void* collection_pop(collection_t* collection)
+{
+	if (collection && collection->head)
+	{
+		collection_node_t* head = collection->head;
+		collection->head = head->next;
+		collection->count--;
+
+		_remove_node(collection, head);		
+		return head->item;
+	}
+
+	return 0;
 }
 
 boolean collection_any(collection_t* collection)

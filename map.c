@@ -16,6 +16,11 @@ map_element_t* get_map_element(level_t* level, int x, int y)
 	return &level->map[(y * level->size.x) + x];
 }
 
+map_element_t* get_player_tile(level_t* level, player_t* player)
+{
+	return get_map_element(level, player->position.x, player->position.y);
+}
+
 element_type_t get_map_element_type(level_t* level, int x, int y)
 {
 	map_element_t* tile = get_map_element(level, x, y);
