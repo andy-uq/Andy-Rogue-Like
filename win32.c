@@ -139,6 +139,10 @@ game_input_t* KeyEventProc(KEY_EVENT_RECORD ker, game_input_t* input)
 		case 'P':
 			input->action = GAME_ACTION_PICKUP;
 			break;
+
+		case 'D':
+			input->action = GAME_ACTION_DROP;
+			break;
 	}
 
 	return input;

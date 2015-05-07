@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -89,11 +90,7 @@ int read_level_item(const char* filename, collection_t* items, level_t* level)
 		if (!item)
 			continue;
 
-		map_element_t* map = get_map_element(level, x, y);
-		if (!map->items)
-			map->items = create_collection(0, 0);
-
-		collection_push(map->items, item);
+		drop_item(level, item, x, y);
 	}
 
 	file_free(file);
@@ -107,8 +104,11 @@ int read_map(const char* filename, game_t* game, level_t* level)
 	if (!file_open_for_read(filename, &file))
 		return 0;
 
-	void* memory = arena_alloc(&level->storage, (file->size + 1) * sizeof(map_element_t));
-	level->map = (map_element_t*)memory;
+	unsigned mapSize = (file->size + 1) * (sizeof(map_element_t));
+	unsigned itemSize = sizeof(map_item_t) * 1000;
+	level->storage = arena_create(mapSize + itemSize);
+	level->map = arena_alloc(&level->storage, mapSize);
+	level->items = collection_from_arena(&level->storage);
 
 	map_element_t* ptr = level->map;
 
@@ -119,6 +119,7 @@ int read_map(const char* filename, game_t* game, level_t* level)
 		while (*line)
 		{
 			*ptr = (map_element_t ){0};
+
 			switch (*line)
 			{
 			case '#':

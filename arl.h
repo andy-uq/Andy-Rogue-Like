@@ -6,9 +6,12 @@
 
 #include "types.h"
 
+collection_t* transient_collection(size_t initialSize, size_t itemSize);
+collection_t* collection_from_arena(arena_t** arena);
 collection_t* create_collection(size_t initialSize, size_t itemSize);
 void collection_push(collection_t* collection, void* item);
 void* collection_pop(collection_t* collection);
+void collection_remove(collection_t* collection, void* item);
 void* collection_new_item(collection_t* collection, size_t sizeofItem);
 void* collection_first(collection_t* collection);
 boolean collection_any(collection_t* collection);
@@ -53,6 +56,9 @@ boolean is_door(map_element_t* e);
 map_element_t* get_map_element(level_t* level, int x, int y);
 map_element_t* get_player_tile(level_t* level, player_t* player);
 element_type_t get_map_element_type(level_t* level, int x, int y);
+void drop_item(level_t* level, item_t* item, int x, int y);
+item_t* pickup_item(level_t* level, int x, int y);
+collection_t* items_on_floor(level_t* level, int x, int y);
 
 /* files */
 boolean parse_value_if_match(char* buffer, const char* key, char** value);

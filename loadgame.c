@@ -163,7 +163,7 @@ void beginParse(file_t* file, char* buffer, game_t* game)
 		load_monster(file, monster);
 		return;
 	}
-	else if (str_equals(buffer, "DOOR"))
+	else if (str_startswith(buffer, "DOOR"))
 	{
 		parse_key_value(buffer, &key, &value);
 		door(value, game);

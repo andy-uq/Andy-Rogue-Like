@@ -7,6 +7,7 @@
 void memory_init(byte* baseAddress, size_t size);
 void transient_reset();
 
+arena_t* transient_arena(size_t size);
 arena_t* arena_create(size_t size);
 void arena_destroy(arena_t* arena);
 

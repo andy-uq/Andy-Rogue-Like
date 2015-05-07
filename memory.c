@@ -14,7 +14,7 @@ typedef struct
 {
 	const char* name;
 	byte* head;
-	byte* tail;
+	byte* alloc;
 	size_t size;
 } block_t;
 
@@ -37,7 +37,7 @@ internal
 void init_block(block_t* block, byte* baseAddress, size_t size)
 {
 	block->head = baseAddress;
-	block->tail = baseAddress + size;
+	block->alloc = baseAddress;
 	block->size = size;
 
 #if _DEBUG
@@ -50,11 +50,12 @@ void init_block(block_t* block, byte* baseAddress, size_t size)
 internal
 void* raw_alloc(block_t* block, size_t size)
 {
-	assert (size < (size_t)(block->tail - block->head) /* "BLOCK FULL" */);
+	uint available = block->size - (size_t)(block->alloc - block->head);
+	assert (size <= available /* "BLOCK FULL" */);
 
-	byte* memory = block->head;
-	block->head += size;
-	debugf("allocated %d bytes (0x%p) from %s (%d bytes remaining)", size, memory, block->name, (size_t)(block->tail - block->head));
+	byte* memory = block->alloc;
+	block->alloc += size;
+	debugf("allocated %d bytes (0x%p) from %s (%d bytes remaining)", size, memory, block->name, available);
 
 #if _DEBUG
 	memset(memory, 0, size);
@@ -68,26 +69,25 @@ void memory_init(byte* baseAddress, size_t size)
 	assert(size > PERMANENT_STORE_SIZE + STRING_STORE_SIZE /* "SIZE NOT BIG ENOUGH FOR PERMANENT_STORE_SIZE AND STRING_STORE_SIZE" */);
 
 	init_block(&_gPermanentStore, baseAddress, PERMANENT_STORE_SIZE);
-	init_block(&_gStringStore, _gPermanentStore.tail, STRING_STORE_SIZE);
-	init_block(&_gTransientStore, _gStringStore.tail, size - (PERMANENT_STORE_SIZE + STRING_STORE_SIZE));
+	init_block(&_gStringStore, baseAddress + PERMANENT_STORE_SIZE, STRING_STORE_SIZE);
+	init_block(&_gTransientStore, baseAddress + PERMANENT_STORE_SIZE + STRING_STORE_SIZE, size - (PERMANENT_STORE_SIZE + STRING_STORE_SIZE));
 
-	assert(_gTransientStore.tail == baseAddress + size /* TAIL MUST BE END OF ALLOCATED RANGE */);
+	assert((_gTransientStore.head + _gTransientStore.size) == baseAddress + size /* TAIL MUST BE END OF ALLOCATED RANGE */);
 
 	size_t arenaStoreSize = sizeof(arena_t) * INITIAL_ARENA_COUNT;
 	arenaStore = (arena_t*)raw_alloc(&_gPermanentStore, arenaStoreSize);
 	arenaStore->size = arenaStoreSize;
-	arenaStore->head = (byte* )&arenaStore[1];
-	arenaStore->alloc = arenaStore->head;
+	arenaStore->head = (byte*) arenaStore;
+	arenaStore->alloc = arenaStore->head + sizeof(arena_t);
 }
 
 void transient_reset()
 {
-	byte* head = _gTransientStore.tail - _gTransientStore.size;
-	if (_gTransientStore.head == head)
+	if (_gTransientStore.alloc == _gTransientStore.head)
 		return;
 
-	debugf("reset transient (%d was used)", _gTransientStore.head - head);
-	_gTransientStore.head = head;
+	debugf("reset transient (%d was used)", _gTransientStore.alloc - _gTransientStore.head);
+	_gTransientStore.alloc = _gTransientStore.head;
 
 #if _DEBUG
 	memset(_gTransientStore.head, 0, _gTransientStore.size);
@@ -97,6 +97,23 @@ void transient_reset()
 void* transient_alloc(size_t size)
 {
 	return raw_alloc(&_gTransientStore, size);
+}
+
+boolean is_transient(void* location)
+{
+	byte* p = (byte*)location;
+	return p >= _gTransientStore.head && p < (_gTransientStore.head + _gTransientStore.size);
+}
+
+arena_t* transient_arena(size_t size)
+{
+	arena_t* arena = (arena_t*)transient_alloc(sizeof(arena_t));
+	arena->size = size;
+	arena->head = (byte*)transient_alloc(size);
+	arena->alloc = arena->head;
+	debugf("create new transient arena of %d bytes (0x%p)", arena->size, arena->head);
+
+	return arena;
 }
 
 const char* string_alloc(const char* string)
@@ -109,12 +126,12 @@ const char* string_alloc(const char* string)
 		(*p++) = *string++;
 		length++;
 
-		assert(p < _gStringStore.tail /* DONT OVERWRITE NEXT ALLOCATION BLOCK */);
+		assert(p < _gStringStore.head + _gStringStore.size /* DONT OVERWRITE NEXT ALLOCATION BLOCK */);
 	}
 
 	*p = 0;
 	_gStringStore.head = p + 1;
-	debugf("new string in heap (%d bytes) %d bytes remaining", length + 1, (size_t)(_gStringStore.tail - _gStringStore.head));
+	debugf("new string in heap (%d bytes) %d bytes remaining", length + 1, _gStringStore.size - (size_t)(_gStringStore.alloc - _gStringStore.head));
 
 	return result;
 }
@@ -175,9 +192,17 @@ void* arena_alloc(arena_t** pArena, size_t size)
 		if (available < size)
 		{
 			int newSize = max(size, arena->size);
-			debugf("chaining new arena of %d bytes because we don't have enough room in this one", newSize);
 
-			*pArena = (arena_t *)arena_create(newSize);
+			if (is_transient(pArena))
+			{
+				*pArena = transient_arena(newSize);
+			}
+			else
+			{
+				*pArena = arena_create(newSize);
+				debugf("chaining new arena of %d bytes because we don't have enough room in this one", newSize);
+			}
+
 			(*pArena)->next = arena;
 			return arena_alloc_internal(*pArena, size);
 		}

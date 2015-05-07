@@ -61,9 +61,10 @@ boolean clamp(v2i* pos, int x, int y)
 	return clamped;
 }
 
-char _get_floor_glyph(map_element_t* map)
+char _get_floor_glyph(level_t* level, int x, int y)
 {
-	item_t* item = collection_first(map->items);
+	collection_t* floor = items_on_floor(level, x, y);
+	item_t* item = collection_first(floor);
 	return item ? item->glyph : '.';
 }
 
@@ -91,7 +92,7 @@ _render_map(level_t* map)
 				switch (mapElement->type)
 				{
 				case FLOOR:
-					c = _get_floor_glyph(mapElement);
+					c = _get_floor_glyph(map, x, y);
 					break;
 				case DOOR:
 					c = '/';
@@ -144,11 +145,11 @@ void _render_stats(player_t* player)
 internal
 int _render_floor(level_t* current_level, player_t* player, int offset)
 {
-	map_element_t* tile = get_map_element(current_level, player->position.x, player->position.y);
-	if (collection_any(tile->items))
+	collection_t* floor = items_on_floor(current_level, player->position.x, player->position.y);
+	if (collection_any(floor))
 	{
 		draw_line((v2i){ 65, offset++ }, "FLOOR:");
-		foreach(item_t*, item, tile->items)
+		foreach(item_t*, item, floor)
 		{
 			drawf_line((v2i){ 65, offset++ }, "%s", item->name);
 		}
@@ -431,12 +432,25 @@ boolean _move_player(game_t* game, const game_input_t input)
 
 void _pickup_item(player_t* player, level_t* level)
 {
-	map_element_t* tile = get_player_tile(level, player);
-	item_t* item = collection_pop(tile->items);
+	item_t* item = pickup_item(level, player->position.x, player->position.y);
 	if (item)
 	{
 		collection_push(player->inventory, item);
 		statusf("Picked up %s", item->name);
+	}
+	else
+	{
+		statusf("There is nothing here");
+	}
+}
+
+void _drop_item(player_t* player, level_t* level)
+{
+	item_t* item = collection_pop(player->inventory);
+	if (item)
+	{
+		drop_item(level, item, player->position.x, player->position.y);
+		statusf("Dropped %s", item->name);
 	}
 	else
 	{
@@ -455,6 +469,11 @@ boolean _perform_action(game_t* game, const GAME_ACTION action)
 	case GAME_ACTION_PICKUP:
 	{
 		_pickup_item(&game->player, &game->current_level);
+		return true;
+	}
+	case GAME_ACTION_DROP:
+	{
+		_drop_item(&game->player, &game->current_level);
 		return true;
 	}
 	}

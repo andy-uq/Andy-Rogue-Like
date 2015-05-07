@@ -39,6 +39,7 @@ typedef enum
 {
 	GAME_ACTION_NONE,
 	GAME_ACTION_PICKUP,
+	GAME_ACTION_DROP,
 	GAME_ACTION_QUIT,
 } GAME_ACTION;
 
@@ -57,7 +58,6 @@ typedef enum {
 
 typedef struct {
 	element_type_t type;
-	collection_t* items;
 } map_element_t;
 
 typedef struct {
@@ -65,6 +65,12 @@ typedef struct {
 	char glyph;
 	const char* name;
 } item_t;
+
+typedef struct
+{
+	int x, y;
+	item_t* item;
+} map_item_t;
 
 typedef struct 
 {
@@ -99,6 +105,7 @@ typedef struct
 
 	const char* filename;
 	map_element_t* map;
+	collection_t* items;
 	v2i size;
 
 	collection_t* mobs;
