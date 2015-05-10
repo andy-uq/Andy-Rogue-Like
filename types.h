@@ -13,6 +13,7 @@ typedef struct {
 
 typedef struct arena_t arena_t;
 typedef struct collection_node_t collection_node_t;
+typedef struct hashtable_t hashtable_t;
 
 struct collection_node_t
 {

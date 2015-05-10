@@ -1,5 +1,6 @@
 #include "arl.h"
 #include<string.h>
+#include<ctype.h>
 
 char* str_append(char* dest, const char* source)
 {
@@ -72,7 +73,7 @@ boolean str_endswith(const char* target, const char* compareTo)
 
 	while (pCompareTo != compareTo)
 	{
-		if (*pTarget != *pCompareTo)
+		if (tolower(*pTarget) != tolower(*pCompareTo))
 			return false;
 
 		pTarget--;
@@ -89,7 +90,7 @@ boolean str_startswith(const char* target, const char* compareTo)
 
 	while (*pCompareTo)
 	{
-		if (*pTarget != *pCompareTo)
+		if (tolower(*pTarget) != tolower(*pCompareTo))
 			return false;
 		
 		if (*pTarget == 0)

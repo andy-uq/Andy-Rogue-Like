@@ -6,6 +6,16 @@
 
 #include "types.h"
 
+void hashtable_destroy(hashtable_t* hashtable);
+void hashtable_clear(hashtable_t* hashtable);
+void* hashtable_get(hashtable_t* hashtable, void* key);
+boolean hashtable_remove(hashtable_t* hashtable, void* key);
+boolean hashtable_add(hashtable_t* hashtable, void* key, void* item);
+boolean hashtable_contains(hashtable_t* hashtable, void* key);
+boolean hashtable_resize(hashtable_t* hashtable, int capacity);
+hashtable_t* create_hashtable(int capacity, int(*hash)(void* key), boolean(*match)(void* key, void* compareTo));
+hashtable_t* create_int_hashtable(int capacity);
+
 collection_t* transient_collection(size_t initialSize, size_t itemSize);
 collection_t* collection_from_arena(arena_t** arena);
 collection_t* create_collection(size_t initialSize, size_t itemSize);
