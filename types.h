@@ -106,7 +106,7 @@ typedef struct
 
 	const char* filename;
 	map_element_t* map;
-	collection_t* items;
+	hashtable_t* items;
 	v2i size;
 
 	collection_t* mobs;
@@ -117,5 +117,6 @@ typedef struct
 	player_t player;
 	level_t current_level;
 
-	collection_t* items;
+	arena_t* storage;
+	hashtable_t* items;
 } game_t;

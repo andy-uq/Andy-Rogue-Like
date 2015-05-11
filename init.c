@@ -32,7 +32,7 @@ int read_monster(const char* filename, level_t* level)
 }
 
 internal
-collection_t* read_item(const char* filename)
+hashtable_t* read_item(const char* filename, arena_t* storage)
 {
 	file_t* file;
 	if (!file_open_for_read(filename, &file))
@@ -48,16 +48,16 @@ collection_t* read_item(const char* filename)
 	}
 
 	file_seek(file, 0L);
-	collection_t* items = create_collection(itemCount, sizeof(item_t));
+	hashtable_t* items = create_int_hashtable(itemCount);
 
-	load_items(file, items);
+	load_items(file, storage, items);
 	file_free(file);
 
 	return items;
 }
 
 internal
-int read_level_item(const char* filename, collection_t* items, level_t* level)
+int read_level_item(const char* filename, hashtable_t* items, level_t* level)
 {
 	file_t* file;
 	if (!file_open_for_read(filename, &file))
@@ -86,7 +86,7 @@ int read_level_item(const char* filename, collection_t* items, level_t* level)
 		token = strtok_s(NULL, " ", &context);
 		y = atoi(token);
 
-		item_t* item = find_item(items, id);
+		item_t* item = hashtable_get(items, &id);
 		if (!item)
 			continue;
 
@@ -108,7 +108,7 @@ int read_map(const char* filename, game_t* game, level_t* level)
 	unsigned itemSize = sizeof(map_item_t) * 1000;
 	level->storage = arena_create(mapSize + itemSize);
 	level->map = arena_alloc(&level->storage, mapSize);
-	level->items = collection_from_arena(&level->storage);
+	level->items = hashtable_from_arena(level->storage, 1000, sizeof(v2i));
 
 	map_element_t* ptr = level->map;
 
@@ -201,7 +201,7 @@ level_t* read_level(game_t* game, level_t* level)
 internal
 void items_init(game_t* game)
 {
-	game->items = read_item("items.txt");
+	game->items = read_item("items.txt", game->storage);
 }
 
 internal
@@ -217,6 +217,8 @@ void player_init(player_t* player)
 
 void init_game_struct(game_t* game)
 {
+	game->storage = arena_create(1 << 20);
+
 	player_init(&game->player);
 	items_init(game);
 

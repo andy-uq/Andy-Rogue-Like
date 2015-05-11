@@ -34,7 +34,7 @@ void set_item_property(const char* key, const char* value, item_t* item)
 	}
 }
 
-void load_items(file_t* file, collection_t* items)
+void load_items(file_t* file, arena_t* storage, hashtable_t* items)
 {
 	char* buffer;
 	char* key;
@@ -50,13 +50,14 @@ void load_items(file_t* file, collection_t* items)
 
 		if (str_startswith(buffer, "END_ITEM"))
 		{
+			hashtable_add(items, &item->id, item);
 			item = 0;
 			continue;
 		}
 
 		if (!item)
 		{
-			item = (item_t*)collection_new_item(items, sizeof(item_t));
+			item = (item_t*)arena_alloc(&storage, sizeof(*item));
 		}
 
 		parse_key_value(buffer, &key, &value);

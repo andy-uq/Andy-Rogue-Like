@@ -10,22 +10,24 @@ boolean is_door(map_element_t* e)
 
 void drop_item(level_t* level, item_t* item, int x, int y)
 {
-	assert(get_map_element(level, x, y));
-	map_item_t* mapItem = collection_new_item(level->items, sizeof(*mapItem));
-	mapItem->x = x;
-	mapItem->y = y;
-	mapItem->item = item;
+	collection_t* itemsOnFloor = items_on_floor(level, x, y);
+	if (!itemsOnFloor)
+	{
+		itemsOnFloor = collection_from_arena(&level->storage);
+		
+		v2i pos = { x, y };
+		hashtable_add(level->items, &pos, itemsOnFloor);
+	}
+
+	collection_push(itemsOnFloor, item);
 }
 
 item_t* pickup_item(level_t* level, int x, int y)
 {
-	foreach(map_item_t*, i, level->items)
+	collection_t* itemsOnFloor = items_on_floor(level, x, y);
+	if (itemsOnFloor)
 	{
-		if (i->x == x && i->y == y)
-		{
-			collection_remove(level->items, i);
-			return i->item;
-		}
+		return collection_pop(itemsOnFloor);
 	}
 
 	return 0;
@@ -33,14 +35,10 @@ item_t* pickup_item(level_t* level, int x, int y)
 
 collection_t* items_on_floor(level_t* level, int x, int y)
 {
-	collection_t* collection = transient_collection(10, sizeof(item_t));
-	foreach(map_item_t*, i, level->items)
-	{
-		if (i->x == x && i->y == y)
-			collection_push(collection, i->item);
-	}
-
-	return collection;
+	assert(get_map_element(level, x, y));
+	v2i pos = { x, y };
+	collection_t* itemsOnFloor = hashtable_get(level->items, &pos);
+	return itemsOnFloor;
 }
 
 map_element_t* get_map_element(level_t* level, int x, int y)

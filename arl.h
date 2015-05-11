@@ -13,8 +13,9 @@ boolean hashtable_remove(hashtable_t* hashtable, void* key);
 boolean hashtable_add(hashtable_t* hashtable, void* key, void* item);
 boolean hashtable_contains(hashtable_t* hashtable, void* key);
 boolean hashtable_resize(hashtable_t* hashtable, int capacity);
-hashtable_t* create_hashtable(int capacity, int(*hash)(void* key), boolean(*match)(void* key, void* compareTo));
+hashtable_t* create_hashtable(int capacity, int keySize);
 hashtable_t* create_int_hashtable(int capacity);
+hashtable_t* hashtable_from_arena(arena_t* arena, int capacity, int keySize);
 
 collection_t* transient_collection(size_t initialSize, size_t itemSize);
 collection_t* collection_from_arena(arena_t** arena);
@@ -57,7 +58,7 @@ void load_game(game_t* game);
 void load_monster(file_t* file, monster_t* monster);
 void load_monsters(file_t* file, collection_t* monsters);
 
-void load_items(file_t* file, collection_t* items);
+void load_items(file_t* file, arena_t* storage, hashtable_t* items);
 item_t* find_item(collection_t* items, int id);
 void set_item_property(const char* key, const char* value, item_t* item);
 

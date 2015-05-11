@@ -85,7 +85,7 @@ void loadPlayerItem(file_t* file, item_t* item)
 }
 
 internal
-void loadPlayerInventory(file_t* file, collection_t* items, player_t* player)
+void loadPlayerInventory(file_t* file, hashtable_t* items, player_t* player)
 {
 	char *buffer, *value;
 	while ((buffer = file_read(file)) != NULL)
@@ -103,7 +103,7 @@ void loadPlayerInventory(file_t* file, collection_t* items, player_t* player)
 		if (parse_value_if_match(buffer, "ITEM", &value))
 		{
 			int itemId = atoi(value);
-			item_t* itemTemplate = collection_get_at(items, itemId);
+			item_t* itemTemplate = hashtable_get(items, &itemId);
 			if (itemTemplate)
 			{
 				item_t* item = collection_new_item(player->inventory, sizeof(*item));

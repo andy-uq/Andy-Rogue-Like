@@ -20,11 +20,12 @@ typedef struct bucket_t
 
 struct hashtable_t
 {
-	int(*hash)(void* key);
-	boolean(*match)(void* key, void* compareTo);
+	uint(*hash)(void* key, int keySize);
+	boolean(*match)(void* key, void* compareTo, int keySize);
 	arena_t* storage;
 	bucket_t* buckets;
 	int bucket_count;
+	int key_size;
 	int count;
 };
 
@@ -182,13 +183,37 @@ int collection_count(collection_t* collection)
 	return collection->count;
 }
 
-hashtable_t* create_hashtable(int capacity, int(*hash)(void* key), boolean(*match)(void* key, void* compareTo))
+internal
+uint _key_hash_binary(void* key, int keySize)
+{
+	const uint Prime = 0x1000193;
+	uint hash = 0x811c9dc5;
+	byte* data = key;
+
+	while (keySize)
+	{
+		hash = (hash * Prime) ^ *data;
+		data++;
+		keySize--;
+	}
+
+	return hash;
+}
+
+internal
+boolean _key_match_binary(void* key, void* compareTo, int keySize)
+{
+	return memcmp(key, compareTo, keySize) == 0;
+}
+
+hashtable_t* create_hashtable(int capacity, int keySize)
 {
 	hashtable_t* hashtable = arena_alloc(&hashtables, sizeof(hashtable_t));
 
 	size_t size = capacity*sizeof(bucket_t);
-	hashtable->hash = hash;
-	hashtable->match = match;
+	hashtable->hash = _key_hash_binary;
+	hashtable->match = _key_match_binary;
+	hashtable->key_size = keySize;
 	hashtable->storage = arena_create(size);
 	hashtable->buckets = arena_alloc(&hashtable->storage, capacity * sizeof(bucket_t));
 	hashtable->bucket_count = capacity;
@@ -197,23 +222,26 @@ hashtable_t* create_hashtable(int capacity, int(*hash)(void* key), boolean(*matc
 	return hashtable;
 }
 
-
-internal
-int _key_hash_int(void* key)
+hashtable_t* hashtable_from_arena(arena_t* arena, int capacity, int keySize)
 {
-	return *( int* )key;
+	hashtable_t* hashtable = arena_alloc(&hashtables, sizeof(hashtable_t));
+
+	size_t size = capacity*sizeof(bucket_t);
+	hashtable->hash = _key_hash_binary;
+	hashtable->match = _key_match_binary;
+	hashtable->key_size = keySize;
+	hashtable->storage = 0;
+	hashtable->buckets = arena_alloc(&arena, capacity * sizeof(bucket_t));
+	hashtable->bucket_count = capacity;
+	hashtable->count = 0;
+
+	return hashtable;
 }
 
 internal
-boolean _key_match_int(void* key, void* compareTo)
+boolean _inner_hashtable_add(bucket_t* buckets, int bucket_count, uint hash, void* key, void* item)
 {
-	return *( int* )key == *( int* )compareTo;
-}
-
-internal
-boolean _inner_hashtable_add(bucket_t* buckets, int bucket_count, int hash, void* key, void* item)
-{
-	int bucketId = hash % bucket_count;
+	uint bucketId = hash % bucket_count;
 	bucket_t* bucket = &buckets[bucketId];
 
 	if (bucket->count == HASH_MAX_COLLISIONS)
@@ -228,6 +256,9 @@ boolean _inner_hashtable_add(bucket_t* buckets, int bucket_count, int hash, void
 
 boolean hashtable_resize(hashtable_t* hashtable, int capacity)
 {
+	if (hashtable->storage == 0)
+		return false;
+
 	size_t size = capacity*sizeof(bucket_t);
 	arena_t* storage = arena_create(size);
 	bucket_t* buckets = arena_alloc(&storage, size);
@@ -238,7 +269,7 @@ boolean hashtable_resize(hashtable_t* hashtable, int capacity)
 		for (int i = 0; i < from_bucket->count; i++)
 		{
 			node_t node = from_bucket->nodes[i];
-			int hash = hashtable->hash(node.key);
+			uint hash = hashtable->hash(node.key, hashtable->key_size);
 			if (!_inner_hashtable_add(buckets, capacity, hash, node.key, node.item))
 			{
 				arena_destroy(storage);
@@ -257,12 +288,12 @@ boolean hashtable_resize(hashtable_t* hashtable, int capacity)
 
 boolean hashtable_contains(hashtable_t* hashtable, void* key)
 {
-	int hash = hashtable->hash(key);
-	int bucketId = hash % hashtable->bucket_count;
+	uint hash = hashtable->hash(key, hashtable->key_size);
+	uint bucketId = hash % hashtable->bucket_count;
 	bucket_t* bucket = &hashtable->buckets[bucketId];
 
 	for (int i = 0; i < bucket->count; i++)
-		if (hashtable->match(bucket->nodes[i].key, key))
+		if (hashtable->match(bucket->nodes[i].key, key, hashtable->key_size))
 			return true;
 
 	return false;
@@ -270,12 +301,12 @@ boolean hashtable_contains(hashtable_t* hashtable, void* key)
 
 void* hashtable_get(hashtable_t* hashtable, void* key)
 {
-	int hash = hashtable->hash(key);
-	int bucketId = hash % hashtable->bucket_count;
+	uint hash = hashtable->hash(key, hashtable->key_size);
+	uint bucketId = hash % hashtable->bucket_count;
 	bucket_t* bucket = &hashtable->buckets[bucketId];
 
 	for (int i = 0; i < bucket->count; i++)
-		if (hashtable->match(bucket->nodes[i].key, key))
+		if (hashtable->match(bucket->nodes[i].key, key, hashtable->key_size))
 			return bucket->nodes[i].item;
 
 	return 0;
@@ -286,7 +317,7 @@ boolean hashtable_add(hashtable_t* hashtable, void* key, void* item)
 	if (hashtable_contains(hashtable, key))
 		return false;
 
-	int hash = hashtable->hash(key);
+	uint hash = hashtable->hash(key, hashtable->key_size);
 	if (_inner_hashtable_add(hashtable->buckets, hashtable->bucket_count, hash, key, item))
 	{
 		hashtable->count++;
@@ -298,13 +329,13 @@ boolean hashtable_add(hashtable_t* hashtable, void* key, void* item)
 
 boolean hashtable_remove(hashtable_t* hashtable, void* key)
 {
-	int hash = hashtable->hash(key);
-	int bucketId = hash % hashtable->bucket_count;
+	uint hash = hashtable->hash(key, hashtable->key_size);
+	uint bucketId = hash % hashtable->bucket_count;
 	bucket_t* bucket = &hashtable->buckets[bucketId];
 
 	for (int i = 0; i < bucket->count; i++)
 	{
-		if (hashtable->match(bucket->nodes[i].key, key))
+		if (hashtable->match(bucket->nodes[i].key, key, hashtable->key_size))
 		{
 			size_t size = (bucket->count - i) * sizeof(node_t);
 			memcpy(&bucket->nodes[i], &bucket->nodes[i + 1], size);
@@ -331,5 +362,5 @@ void hashtable_destroy(hashtable_t* hashtable)
 
 hashtable_t* create_int_hashtable(int capacity)
 {
-	return create_hashtable(capacity, _key_hash_int, _key_match_int);
+	return create_hashtable(capacity, sizeof(int));
 }
