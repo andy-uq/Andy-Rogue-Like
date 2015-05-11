@@ -6,16 +6,10 @@
 
 #define HASH_MAX_COLLISIONS 10
 
-typedef struct node_t
+typedef struct bucket_t
 {
 	void* key;
 	void* item;
-} node_t;
-
-typedef struct bucket_t
-{
-	int count;
-	node_t nodes[HASH_MAX_COLLISIONS];
 } bucket_t;
 
 struct hashtable_t
@@ -241,16 +235,22 @@ hashtable_t* hashtable_from_arena(arena_t* arena, int capacity, int keySize)
 internal
 boolean _inner_hashtable_add(bucket_t* buckets, int bucket_count, uint hash, void* key, void* item)
 {
-	uint bucketId = hash % bucket_count;
+	uint start = hash % bucket_count;
+	uint bucketId = start;
+	
 	bucket_t* bucket = &buckets[bucketId];
-
-	if (bucket->count == HASH_MAX_COLLISIONS)
-		return false;
-
-	bucket->nodes[bucket->count++] = (node_t)
+	while (bucket->key)
 	{
-		.key = key, .item = item
-	};
+		bucketId = (bucketId + 1) % bucket_count;
+		if (bucketId == start)
+			return false;
+
+		bucket = &buckets[bucketId];
+	}
+
+	bucket->key = key;
+	bucket->item = item;
+
 	return true;
 }
 
@@ -266,11 +266,10 @@ boolean hashtable_resize(hashtable_t* hashtable, int capacity)
 	for (int b = 0; b < hashtable->bucket_count; b++)
 	{
 		bucket_t* from_bucket = &hashtable->buckets[b];
-		for (int i = 0; i < from_bucket->count; i++)
+		if (from_bucket->key)
 		{
-			node_t node = from_bucket->nodes[i];
-			uint hash = hashtable->hash(node.key, hashtable->key_size);
-			if (!_inner_hashtable_add(buckets, capacity, hash, node.key, node.item))
+			uint hash = hashtable->hash(from_bucket->key, hashtable->key_size);
+			if (!_inner_hashtable_add(buckets, capacity, hash, from_bucket->key, from_bucket->item))
 			{
 				arena_destroy(storage);
 				return false;
@@ -289,12 +288,21 @@ boolean hashtable_resize(hashtable_t* hashtable, int capacity)
 boolean hashtable_contains(hashtable_t* hashtable, void* key)
 {
 	uint hash = hashtable->hash(key, hashtable->key_size);
-	uint bucketId = hash % hashtable->bucket_count;
+	uint start = hash % hashtable->bucket_count;
+	uint bucketId = start;
 	bucket_t* bucket = &hashtable->buckets[bucketId];
 
-	for (int i = 0; i < bucket->count; i++)
-		if (hashtable->match(bucket->nodes[i].key, key, hashtable->key_size))
+	while (bucket->key)
+	{
+		if (hashtable->match(bucket->key, key, hashtable->key_size))
 			return true;
+
+		bucketId = (bucketId + 1) % hashtable->bucket_count;
+		if (bucketId == start)
+			break;
+
+		bucket = &hashtable->buckets[bucketId];
+	}
 
 	return false;
 }
@@ -302,12 +310,21 @@ boolean hashtable_contains(hashtable_t* hashtable, void* key)
 void* hashtable_get(hashtable_t* hashtable, void* key)
 {
 	uint hash = hashtable->hash(key, hashtable->key_size);
-	uint bucketId = hash % hashtable->bucket_count;
+	uint start = hash % hashtable->bucket_count;
+	uint bucketId = start;
 	bucket_t* bucket = &hashtable->buckets[bucketId];
 
-	for (int i = 0; i < bucket->count; i++)
-		if (hashtable->match(bucket->nodes[i].key, key, hashtable->key_size))
-			return bucket->nodes[i].item;
+	while (bucket->key)
+	{
+		if (hashtable->match(bucket->key, key, hashtable->key_size))
+			return bucket->item;
+
+		bucketId = (bucketId + 1) % hashtable->bucket_count;
+		if (bucketId == start)
+			break;
+
+		bucket = &hashtable->buckets[bucketId];
+	}
 
 	return 0;
 }
@@ -330,20 +347,26 @@ boolean hashtable_add(hashtable_t* hashtable, void* key, void* item)
 boolean hashtable_remove(hashtable_t* hashtable, void* key)
 {
 	uint hash = hashtable->hash(key, hashtable->key_size);
-	uint bucketId = hash % hashtable->bucket_count;
+	uint start = hash % hashtable->bucket_count;
+	uint bucketId = start;
 	bucket_t* bucket = &hashtable->buckets[bucketId];
 
-	for (int i = 0; i < bucket->count; i++)
+	while (bucket->key)
 	{
-		if (hashtable->match(bucket->nodes[i].key, key, hashtable->key_size))
+		if (hashtable->match(bucket->key, key, hashtable->key_size))
 		{
-			size_t size = (bucket->count - i) * sizeof(node_t);
-			memcpy(&bucket->nodes[i], &bucket->nodes[i + 1], size);
-			bucket->count--;
+			bucket->key = 0;
+			bucket->item = 0;
 			hashtable->count--;
 
 			return true;
 		}
+
+		bucketId = (bucketId + 1) % hashtable->bucket_count;
+		if (bucketId == start)
+			break;
+
+		bucket = &hashtable->buckets[bucketId];
 	}
 
 	return false;

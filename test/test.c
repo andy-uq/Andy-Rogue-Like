@@ -105,7 +105,7 @@ void test_collections()
 
 void test_hashtable()
 {
-	hashtable_t* hashtable = create_int_hashtable(1000);
+	hashtable_t* hashtable = create_int_hashtable(10000);
 	assert(hashtable);
 
 	test_obj_t i1 = { .name = "_add_item_to_collection" };
