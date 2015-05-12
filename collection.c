@@ -6,19 +6,14 @@
 
 #define HASH_MAX_COLLISIONS 10
 
-typedef struct bucket_t
-{
-	void* key;
-	void* item;
-} bucket_t;
-
 struct hashtable_t
 {
 	uint(*hash)(void* key, int keySize);
 	boolean(*match)(void* key, void* compareTo, int keySize);
 	arena_t* storage;
-	bucket_t* buckets;
-	int bucket_count;
+	byte* keys;
+	void** items;
+	int capacity;
 	int key_size;
 	int count;
 };
@@ -204,13 +199,14 @@ hashtable_t* create_hashtable(int capacity, int keySize)
 {
 	hashtable_t* hashtable = arena_alloc(&hashtables, sizeof(hashtable_t));
 
-	size_t size = capacity*sizeof(bucket_t);
+	size_t size = capacity*(sizeof(void*) + keySize);
 	hashtable->hash = _key_hash_binary;
 	hashtable->match = _key_match_binary;
 	hashtable->key_size = keySize;
 	hashtable->storage = arena_create(size);
-	hashtable->buckets = arena_alloc(&hashtable->storage, capacity * sizeof(bucket_t));
-	hashtable->bucket_count = capacity;
+	hashtable->items = arena_alloc(&hashtable->storage, capacity * sizeof(void*));
+	hashtable->keys = arena_alloc(&hashtable->storage, capacity * (sizeof(keySize) + 1));
+	hashtable->capacity = capacity;
 	hashtable->count = 0;
 
 	return hashtable;
@@ -220,36 +216,40 @@ hashtable_t* hashtable_from_arena(arena_t* arena, int capacity, int keySize)
 {
 	hashtable_t* hashtable = arena_alloc(&hashtables, sizeof(hashtable_t));
 
-	size_t size = capacity*sizeof(bucket_t);
+	size_t size = capacity*(sizeof(void*) + keySize + 1);
 	hashtable->hash = _key_hash_binary;
 	hashtable->match = _key_match_binary;
 	hashtable->key_size = keySize;
+	hashtable->items = arena_alloc(&arena, capacity * sizeof(void*));
+	hashtable->keys = arena_alloc(&arena, capacity *(sizeof(keySize) + 1));
+	hashtable->capacity = capacity;
 	hashtable->storage = 0;
-	hashtable->buckets = arena_alloc(&arena, capacity * sizeof(bucket_t));
-	hashtable->bucket_count = capacity;
 	hashtable->count = 0;
 
 	return hashtable;
 }
 
+#define HASHKEY(keys, bucketid, keySize) ((keys) + (bucketid * (keySize+1)))
+
 internal
-boolean _inner_hashtable_add(bucket_t* buckets, int bucket_count, uint hash, void* key, void* item)
+boolean _inner_hashtable_add(void** itemStore, byte* keyStore, int capacity, uint hash, int keySize, void* key, void* item)
 {
-	uint start = hash % bucket_count;
+	uint start = hash % capacity;
 	uint bucketId = start;
 	
-	bucket_t* bucket = &buckets[bucketId];
-	while (bucket->key)
+	byte* targetKey = HASHKEY(keyStore, bucketId, keySize);
+	while (*targetKey)
 	{
-		bucketId = (bucketId + 1) % bucket_count;
+		bucketId = (bucketId + 1) % capacity;
 		if (bucketId == start)
 			return false;
 
-		bucket = &buckets[bucketId];
+		targetKey = HASHKEY(keyStore, bucketId, keySize);
 	}
 
-	bucket->key = key;
-	bucket->item = item;
+	*targetKey = 1;
+	itemStore[bucketId] = item;
+	memcpy(targetKey + 1, key, keySize);
 
 	return true;
 }
@@ -259,17 +259,18 @@ boolean hashtable_resize(hashtable_t* hashtable, int capacity)
 	if (hashtable->storage == 0)
 		return false;
 
-	size_t size = capacity*sizeof(bucket_t);
+	size_t size = capacity*(sizeof(void*) + hashtable->key_size + 1);
 	arena_t* storage = arena_create(size);
-	bucket_t* buckets = arena_alloc(&storage, size);
+	void** itemStore = arena_alloc(&storage, capacity*sizeof(void*));
+	byte* keyStore = arena_alloc(&storage, capacity*(hashtable->key_size + 1));
 
-	for (int b = 0; b < hashtable->bucket_count; b++)
+	for (int b = 0; b < hashtable->capacity; b++)
 	{
-		bucket_t* from_bucket = &hashtable->buckets[b];
-		if (from_bucket->key)
+		byte* key = HASHKEY(hashtable->keys, b, hashtable->key_size);
+		if (*key)
 		{
-			uint hash = hashtable->hash(from_bucket->key, hashtable->key_size);
-			if (!_inner_hashtable_add(buckets, capacity, hash, from_bucket->key, from_bucket->item))
+			uint hash = hashtable->hash(key + 1, hashtable->key_size);
+			if (!_inner_hashtable_add(itemStore, keyStore, capacity, hash, hashtable->key_size, key + 1, hashtable->items[b]))
 			{
 				arena_destroy(storage);
 				return false;
@@ -280,28 +281,29 @@ boolean hashtable_resize(hashtable_t* hashtable, int capacity)
 	arena_destroy(hashtable->storage);
 
 	hashtable->storage = storage;
-	hashtable->buckets = buckets;
-	hashtable->bucket_count = capacity;
+	hashtable->keys = keyStore;
+	hashtable->items = itemStore;
+	hashtable->capacity = capacity;
 	return true;
 }
 
 boolean hashtable_contains(hashtable_t* hashtable, void* key)
 {
 	uint hash = hashtable->hash(key, hashtable->key_size);
-	uint start = hash % hashtable->bucket_count;
+	uint start = hash % hashtable->capacity;
 	uint bucketId = start;
-	bucket_t* bucket = &hashtable->buckets[bucketId];
+	byte* target = HASHKEY(hashtable->keys, bucketId, hashtable->key_size);
 
-	while (bucket->key)
+	while (*target)
 	{
-		if (hashtable->match(bucket->key, key, hashtable->key_size))
+		if (hashtable->match(target + 1, key, hashtable->key_size))
 			return true;
 
-		bucketId = (bucketId + 1) % hashtable->bucket_count;
+		bucketId = (bucketId + 1) % hashtable->capacity;
 		if (bucketId == start)
 			break;
 
-		bucket = &hashtable->buckets[bucketId];
+		target = HASHKEY(hashtable->keys, bucketId, hashtable->key_size);
 	}
 
 	return false;
@@ -310,20 +312,20 @@ boolean hashtable_contains(hashtable_t* hashtable, void* key)
 void* hashtable_get(hashtable_t* hashtable, void* key)
 {
 	uint hash = hashtable->hash(key, hashtable->key_size);
-	uint start = hash % hashtable->bucket_count;
+	uint start = hash % hashtable->capacity;
 	uint bucketId = start;
-	bucket_t* bucket = &hashtable->buckets[bucketId];
+	byte* target = HASHKEY(hashtable->keys, bucketId, hashtable->key_size);
 
-	while (bucket->key)
+	while (*target)
 	{
-		if (hashtable->match(bucket->key, key, hashtable->key_size))
-			return bucket->item;
+		if (hashtable->match(target + 1, key, hashtable->key_size))
+			return hashtable->items[bucketId];
 
-		bucketId = (bucketId + 1) % hashtable->bucket_count;
+		bucketId = (bucketId + 1) % hashtable->capacity;
 		if (bucketId == start)
 			break;
 
-		bucket = &hashtable->buckets[bucketId];
+		target = HASHKEY(hashtable->keys, bucketId, hashtable->key_size);
 	}
 
 	return 0;
@@ -335,7 +337,7 @@ boolean hashtable_add(hashtable_t* hashtable, void* key, void* item)
 		return false;
 
 	uint hash = hashtable->hash(key, hashtable->key_size);
-	if (_inner_hashtable_add(hashtable->buckets, hashtable->bucket_count, hash, key, item))
+	if (_inner_hashtable_add(hashtable->items, hashtable->keys, hashtable->capacity, hash, hashtable->key_size, key, item))
 	{
 		hashtable->count++;
 		return true;
@@ -347,26 +349,26 @@ boolean hashtable_add(hashtable_t* hashtable, void* key, void* item)
 boolean hashtable_remove(hashtable_t* hashtable, void* key)
 {
 	uint hash = hashtable->hash(key, hashtable->key_size);
-	uint start = hash % hashtable->bucket_count;
+	uint start = hash % hashtable->capacity;
 	uint bucketId = start;
-	bucket_t* bucket = &hashtable->buckets[bucketId];
+	byte* target = HASHKEY(hashtable->keys, bucketId, hashtable->key_size);
 
-	while (bucket->key)
+	while (*target)
 	{
-		if (hashtable->match(bucket->key, key, hashtable->key_size))
+		if (hashtable->match(target + 1, key, hashtable->key_size))
 		{
-			bucket->key = 0;
-			bucket->item = 0;
+			*target = 0;
+			hashtable->items[bucketId] = 0;
 			hashtable->count--;
 
 			return true;
 		}
 
-		bucketId = (bucketId + 1) % hashtable->bucket_count;
+		bucketId = (bucketId + 1) % hashtable->capacity;
 		if (bucketId == start)
 			break;
 
-		bucket = &hashtable->buckets[bucketId];
+		target = HASHKEY(hashtable->keys, bucketId, hashtable->key_size);
 	}
 
 	return false;
@@ -375,7 +377,8 @@ boolean hashtable_remove(hashtable_t* hashtable, void* key)
 void hashtable_clear(hashtable_t* hashtable)
 {
 	hashtable->count = 0;
-	memset(hashtable->buckets, 0, sizeof(bucket_t) * hashtable->bucket_count);
+	memset(hashtable->keys, 0, (sizeof(hashtable->key_size) + 1) * hashtable->capacity);
+	memset(hashtable->items, 0, sizeof(void*) * hashtable->capacity);
 }
 
 void hashtable_destroy(hashtable_t* hashtable)

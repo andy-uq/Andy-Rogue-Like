@@ -136,8 +136,7 @@ void test_hashtable()
 	test_obj_t* p = buffer;
 	for (int i = 0; i < 5000; i++, p++)
 	{
-		p->id = i;
-		assert(hashtable_add(hashtable, &p->id, p));
+		assert(hashtable_add(hashtable, &i, p));
 	}
 
 	for (int i = 0; i < 5000; i++)
