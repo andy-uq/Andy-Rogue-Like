@@ -61,6 +61,11 @@ void load_monsters(file_t* file, collection_t* monsters);
 void load_items(file_t* file, arena_t* storage, hashtable_t* items);
 item_t* find_item(collection_t* items, int id);
 void set_item_property(const char* key, const char* value, item_t* item);
+void set_player_item_property(const char* key, const char* value, stacked_item_t* item);
+
+stacked_item_t* stacked_find(collection_t* collection, int itemid);
+stacked_item_t* stacked_add(collection_t* collection, item_t* item);
+item_t* stacked_remove(collection_t* collection, stacked_item_t* stacked);
 
 /* map */
 boolean is_door(map_element_t* e);

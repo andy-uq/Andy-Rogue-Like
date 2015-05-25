@@ -69,9 +69,15 @@ typedef struct {
 
 typedef struct
 {
-	int x, y;
 	item_t* item;
+	int x, y;
 } map_item_t;
+
+typedef struct
+{
+	item_t* item;
+	int quantity;
+} stacked_item_t;
 
 typedef struct 
 {
@@ -94,7 +100,8 @@ typedef struct {
 	int attack;
 	int defense;
 	int damage;
-	
+	long currency;
+
 	collection_t* inventory;
 
 	monster_t* target;

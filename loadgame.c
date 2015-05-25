@@ -48,6 +48,10 @@ void setPlayerProperty(const char* key, char* value, player_t* player)
 	{
 		player->hp = atoi(value);
 	}
+	else if (str_equals("CURRENCY", key))
+	{
+		player->currency = atol(value);
+	}
 	else if (str_equals("POSITION", key))
 	{
 		char* context;
@@ -62,7 +66,7 @@ void setPlayerProperty(const char* key, char* value, player_t* player)
 }
 
 internal
-void loadPlayerItem(file_t* file, item_t* item)
+void loadPlayerItem(file_t* file, stacked_item_t* item)
 {
 	char* buffer;
 	while ((buffer = file_read(file)) != NULL)
@@ -80,7 +84,7 @@ void loadPlayerItem(file_t* file, item_t* item)
 		char* key;
 		char* value;
 		parse_key_value(buffer, &key, &value);
-		set_item_property(key, value, item);
+		set_player_item_property(key, value, item);
 	}
 }
 
@@ -106,11 +110,9 @@ void loadPlayerInventory(file_t* file, hashtable_t* items, player_t* player)
 			item_t* itemTemplate = hashtable_get(items, &itemId);
 			if (itemTemplate)
 			{
-				item_t* item = collection_new_item(player->inventory, sizeof(*item));
-				item->glyph = itemTemplate->glyph;
-				item->name = itemTemplate->name;
-				item->id = itemTemplate->id;
-				loadPlayerItem(file, itemTemplate);
+				stacked_item_t* playerItem = collection_new_item(player->inventory, sizeof(*playerItem));
+				playerItem->item = itemTemplate;
+				loadPlayerItem(file, playerItem);
 			}
 		}
 	}

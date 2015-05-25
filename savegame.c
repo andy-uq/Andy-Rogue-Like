@@ -117,11 +117,13 @@ void savePlayer(file_t* saveGame, player_t* player)
 	writeFileKeyValue(saveGame, "ATTACK", "%d", player->attack);
 	writeFileKeyValue(saveGame, "DEFENSE", "%d", player->defense);
 	writeFileKeyValue(saveGame, "DAMAGE", "%d", player->damage);
+	writeFileKeyValue(saveGame, "CURRENCY", "%ld", player->currency);
 
 	writeFileLine(saveGame, "INVENTORY");
-	foreach(item_t*, item, player->inventory)
+	foreach(stacked_item_t*, item, player->inventory)
 	{
-		writeFileKeyValue(saveGame, "ITEM", "%d", item->id);
+		writeFileKeyValue(saveGame, "ITEM", "%d", item->item->id);
+		writeFileKeyValue(saveGame, "QUANTITY", "%d", item->quantity);
 		writeFileLine(saveGame, "END_ITEM");
 	}
 	writeFileLine(saveGame, "END_INVENTORY");

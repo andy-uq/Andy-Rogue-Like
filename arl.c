@@ -64,8 +64,8 @@ boolean clamp(v2i* pos, int x, int y)
 char _get_floor_glyph(level_t* level, int x, int y)
 {
 	collection_t* floor = items_on_floor(level, x, y);
-	item_t* item = collection_first(floor);
-	return item ? item->glyph : '.';
+	stacked_item_t* stacked = collection_first(floor);
+	return stacked ? stacked->item->glyph : '.';
 }
 
 internal void
@@ -126,32 +126,49 @@ _render_map(level_t* map)
 internal
 void _render_stats(player_t* player)
 {
-	draw_line((v2i){ 65, 2 }, "PLAYER:");
-	drawf_line((v2i){ 65, 3 }, "HP: %d", player->hp);
-	drawf_line((v2i){ 65, 4 }, "Attack: %d", player->attack);
-	drawf_line((v2i){ 65, 5 }, "Defense: %d", player->defense);
-	drawf_line((v2i){ 65, 6 }, "Damage: %d", player->damage);
+	int left = 60;
+	draw_line((v2i)	{ left, 2 }, "PLAYER:");
+	drawf_line((v2i){ left, 3 }, "HP: %d", player->hp);
+	drawf_line((v2i){ left, 4 }, "Attack: %d", player->attack);
+	drawf_line((v2i){ left, 5 }, "Defense: %d", player->defense);
+	drawf_line((v2i){ left, 6 }, "Damage: %d", player->damage);
+	drawf_line((v2i){ left, 6 }, "Currency: %ld/%02d/%02d", player->currency / 10000, (player->currency % 10000) / 100, player->currency % 100);
 
 	if (player->target)
 	{
-		draw_line((v2i){ 65, 7 }, "TARGET:");
-		drawf_line((v2i){ 65, 8 }, "HP: %d", player->target->hp);
-		drawf_line((v2i){ 65, 9 }, "Attack: %d", player->target->attack);
-		drawf_line((v2i){ 65, 10 }, "Defense: %d", player->target->defense);
-		drawf_line((v2i){ 65, 11 }, "Damage: %d", player->target->damage);
+		draw_line((v2i){ left, 7 }, "TARGET:");
+		drawf_line((v2i){ left, 8 }, "HP: %d", player->target->hp);
+		drawf_line((v2i){ left, 9 }, "Attack: %d", player->target->attack);
+		drawf_line((v2i){ left, 10 }, "Defense: %d", player->target->defense);
+		drawf_line((v2i){ left, 11 }, "Damage: %d", player->target->damage);
+	}
+}
+
+internal
+void _render_item(stacked_item_t* stacked, int x, int y)
+{
+	if (stacked->quantity > 1)
+	{
+		drawf_line((v2i){ x, y }, "(%d) %s", stacked->quantity, stacked->item->name);
+	}
+	else
+	{
+		drawf_line((v2i){ x, y }, "%s", stacked->item->name);
 	}
 }
 
 internal
 int _render_floor(level_t* current_level, player_t* player, int offset)
 {
+	int left = 60;
+
 	collection_t* floor = items_on_floor(current_level, player->position.x, player->position.y);
 	if (collection_any(floor))
 	{
-		draw_line((v2i){ 65, offset++ }, "FLOOR:");
-		foreach(item_t*, item, floor)
+		draw_line((v2i){ left, offset++ }, "FLOOR:");
+		foreach(stacked_item_t*, item, floor)
 		{
-			drawf_line((v2i){ 65, offset++ }, "%s", item->name);
+			_render_item(item, left, offset++);
 		}
 	}
 
@@ -161,12 +178,14 @@ int _render_floor(level_t* current_level, player_t* player, int offset)
 internal
 int _render_inventory(player_t* player, int offset)
 {
+	int left = 60;
+
 	if (collection_any(player->inventory))
 	{
-		draw_line((v2i){ 65, offset++ }, "INVENTORY:");
-		foreach(item_t*, item, player->inventory)
+		draw_line((v2i){ left, offset++ }, "INVENTORY:");
+		foreach(stacked_item_t*, item, player->inventory)
 		{
-			drawf_line((v2i){ 65, offset++ }, "%s", item->name);
+			_render_item(item, left, offset++);
 		}
 	}
 
@@ -435,7 +454,7 @@ void _pickup_item(player_t* player, level_t* level)
 	item_t* item = pickup_item(level, player->position.x, player->position.y);
 	if (item)
 	{
-		collection_push(player->inventory, item);
+		stacked_add(player->inventory, item);
 		statusf("Picked up %s", item->name);
 	}
 	else
@@ -446,15 +465,16 @@ void _pickup_item(player_t* player, level_t* level)
 
 void _drop_item(player_t* player, level_t* level)
 {
-	item_t* item = collection_pop(player->inventory);
-	if (item)
+	stacked_item_t* stacked = collection_first(player->inventory);
+	if (stacked)
 	{
+		item_t* item = stacked_remove(player->inventory, stacked);
 		drop_item(level, item, player->position.x, player->position.y);
 		statusf("Dropped %s", item->name);
 	}
 	else
 	{
-		statusf("There is nothing here");
+		statusf("There is nothing to drop");
 	}
 }
 

@@ -19,7 +19,7 @@ void drop_item(level_t* level, item_t* item, int x, int y)
 		hashtable_add(level->items, &pos, itemsOnFloor);
 	}
 
-	collection_push(itemsOnFloor, item);
+	stacked_add(itemsOnFloor, item);
 }
 
 item_t* pickup_item(level_t* level, int x, int y)
@@ -27,7 +27,8 @@ item_t* pickup_item(level_t* level, int x, int y)
 	collection_t* itemsOnFloor = items_on_floor(level, x, y);
 	if (itemsOnFloor)
 	{
-		return collection_pop(itemsOnFloor);
+		stacked_item_t* item = collection_first(itemsOnFloor);
+		return stacked_remove(itemsOnFloor, item);
 	}
 
 	return 0;
