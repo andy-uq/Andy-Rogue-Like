@@ -176,20 +176,18 @@ int _render_floor(level_t* current_level, player_t* player, int offset)
 }
 
 internal
-int _render_inventory(player_t* player, int offset)
+int _render_inventory(player_t* player, int x, int y, const char* title)
 {
-	int left = 60;
-
 	if (collection_any(player->inventory))
 	{
-		draw_line((v2i){ left, offset++ }, "INVENTORY:");
+		draw_line((v2i){ x, y++ }, title);
 		foreach(stacked_item_t*, item, player->inventory)
 		{
-			_render_item(item, left, offset++);
+			_render_item(item, x + 3, y++);
 		}
 	}
 
-	return offset;
+	return y;
 }
 
 void
@@ -205,8 +203,22 @@ update_and_render()
 	_render_map(&_game.current_level);
 	_render_stats(&_game.player);
 	int offset = 13;
-	offset = _render_inventory(&_game.player, offset);
+	offset = _render_inventory(&_game.player, 60, offset, "INVENTORY");
 	offset = _render_floor(&_game.current_level, &_game.player, offset);
+
+	if (_game.select_item.active)
+	{
+		makeDark();
+		int y = 10;
+		draw_line((v2i){ 30, y++ }, _game.select_item.title);
+		foreach(stacked_item_t*, item, _game.select_item.items)
+		{
+			if (item == _game.select_item.selected)
+				draw_char((v2i){ 27, y }, '>');
+
+			_render_item(item, 30, y++);
+		}
+	}
 }
 
 #define abs(x) ((x) > 0 ? (x) : -(x))
@@ -429,6 +441,9 @@ boolean _move_player(game_t* game, const game_input_t input)
 	if (!(input.x_offset || input.y_offset))
 		return false;
 
+	if (game->select_item.active)
+		return false;
+
 	v2i newPos = { game->player.position.x + input.x_offset, game->player.position.y + input.y_offset };
 	int mapElement = get_map_element_type(&game->current_level, newPos.x, newPos.y);
 	switch (mapElement)
@@ -463,24 +478,34 @@ void _pickup_item(player_t* player, level_t* level)
 	}
 }
 
-void _drop_item(player_t* player, level_t* level)
+void _drop_item(player_t* player, level_t* level, item_t* item)
 {
-	stacked_item_t* stacked = collection_first(player->inventory);
-	if (stacked)
+	foreach(stacked_item_t*, i, player->inventory)
 	{
-		item_t* item = stacked_remove(player->inventory, stacked);
-		drop_item(level, item, player->position.x, player->position.y);
-		statusf("Dropped %s", item->name);
+		if (i->item == item)
+		{
+			item_t* item = stacked_remove(player->inventory, i);
+			drop_item(level, item, player->position.x, player->position.y);
+			statusf("Dropped %s", item->name);
+		}
 	}
-	else
-	{
-		statusf("There is nothing to drop");
-	}
+	
+	statusf("There is nothing to drop");
 }
 
 internal
-boolean _perform_action(game_t* game, const GAME_ACTION action)
+void _begin_item_select(select_item_t* select, collection_t* items, const char* title)
 {
+	select->active = true;
+	select->items = items;
+	select->title = title;
+	select->selected = collection_first(items);
+}
+
+internal
+boolean _perform_action(game_t* game, game_input_t input)
+{
+	GAME_ACTION action = input.action;
 	if (action == GAME_ACTION_NONE)
 		return false;
 
@@ -493,9 +518,37 @@ boolean _perform_action(game_t* game, const GAME_ACTION action)
 	}
 	case GAME_ACTION_DROP:
 	{
-		_drop_item(&game->player, &game->current_level);
+		if (game->select_item.selected) {
+			_drop_item(&game->player, &game->current_level, game->select_item.selected->item);
+			game->select_item.active = false;
+		}
+		else {
+			_begin_item_select(&game->select_item, game->player.inventory, "SELECT ITEM TO DROP");
+			return false;
+		}
 		return true;
 	}
+	case GAME_ACTION_CANCEL:
+		game->select_item.active = false;
+		return false;
+	}
+
+	if (game->select_item.active)
+	{
+		stacked_item_t* next = 0;
+		if (input.y_offset > 0) 
+		{
+			next = collection_next(game->select_item.items, game->select_item.selected);
+		}
+		else if (input.y_offset < 0)
+		{
+			next = collection_prev(game->select_item.items, game->select_item.selected);
+		}
+		if (next)
+		{
+			game->select_item.selected = next;
+			return false;
+		}
 	}
 
 	return false;
@@ -506,7 +559,7 @@ void process_input(const game_input_t input)
 	if (input.action == GAME_ACTION_QUIT)
 		return;
 
-	boolean actionTaken = _move_player(&_game, input) | _perform_action(&_game, input.action);
+	boolean actionTaken = _move_player(&_game, input) | _perform_action(&_game, input);
 	if (actionTaken)
 	{
 		moveMobs(&_game);

@@ -64,9 +64,9 @@ void _get_first_item_from_collection()
 
 void _get_n_item_from_collection()
 {
-	test_obj_t t1 = { .name = "1" };
+	test_obj_t t1 = { .name = "3" };
 	test_obj_t t2 = { .name = "2" };
-	test_obj_t t3 = { .name = "3" };
+	test_obj_t t3 = { .name = "1" };
 	
 	collection_t* collection = create_collection(1, sizeof(test_obj_t));
 	collection_push(collection, &t1);
@@ -76,9 +76,24 @@ void _get_n_item_from_collection()
 	test_obj_t* r1 = collection_get_at(collection, 0);
 	test_obj_t* r2 = collection_get_at(collection, 1);
 	test_obj_t* r3 = collection_get_at(collection, 2);
-	assert(*r1->name == '3');
+	assert(*r1->name == '1');
 	assert(*r2->name == '2');
-	assert(*r3->name == '1');
+	assert(*r3->name == '3');
+
+	test_obj_t* n1 = collection_next(collection, r1);
+	test_obj_t* p1 = collection_prev(collection, r1);
+	assert(*n1->name == '2');
+	assert(p1 == 0);
+
+	test_obj_t* n2 = collection_next(collection, r2);
+	test_obj_t* p2 = collection_prev(collection, r2);
+	assert(*n2->name == '3');
+	assert(*p2->name == '1');
+
+	test_obj_t* n3 = collection_next(collection, r3);
+	test_obj_t* p3 = collection_prev(collection, r3);
+	assert(n3 == 0);
+	assert(*p3->name == '2');
 }
 
 void _remove_item_from_collection()

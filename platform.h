@@ -6,6 +6,8 @@ void draw_char(const v2i pos, const char);
 void draw_line(const v2i pos, const char* text);
 void drawf_line(const v2i pos, const char* format, ...);
 
+void makeDark();
+
 /* debug */
 void debug(char* outputString);
 void debugf(const char* format, ...);

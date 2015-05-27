@@ -27,6 +27,8 @@ void* collection_new_item(collection_t* collection, size_t sizeofItem);
 void* collection_first(collection_t* collection);
 boolean collection_any(collection_t* collection);
 void* collection_get_at(collection_t* collection, uint index);
+void* collection_next(collection_t* collection, void* item);
+void* collection_prev(collection_t* collection, void* item);
 int collection_count(collection_t* collection);
 
 #define foreach(as, iterator, collection) collection_node_t* __collectionIterator = collection->head; \

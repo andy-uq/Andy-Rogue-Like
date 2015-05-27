@@ -179,6 +179,7 @@ int beginRender()
 {
 	DWORD write;
 	FillConsoleOutputCharacter(_hBackBuffer, _T(' '), 80 * 25, (COORD){ 0 }, &write);
+	FillConsoleOutputAttribute(_hBackBuffer, 0x0f, 80 * 25, (COORD){ 0 }, &write);
 	return 0;
 }
 
@@ -226,6 +227,13 @@ draw_to_buffer(const char *text)
 		coordBufSize,		// col-row size of chiBuffer 
 		coordBufCoord,		// top left src cell in chiBuffer 
 		&srctWriteRect);	// dest. screen textBuffer rectangle 
+}
+
+
+void makeDark()
+{
+	DWORD write;
+	FillConsoleOutputAttribute(_hBackBuffer, 0x08, 80 * 25, (COORD){ 0 }, &write);
 }
 
 void 

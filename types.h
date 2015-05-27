@@ -42,6 +42,7 @@ typedef enum
 	GAME_ACTION_PICKUP,
 	GAME_ACTION_DROP,
 	GAME_ACTION_QUIT,
+	GAME_ACTION_CANCEL,
 } GAME_ACTION;
 
 typedef struct {
@@ -78,6 +79,13 @@ typedef struct
 	item_t* item;
 	int quantity;
 } stacked_item_t;
+
+typedef struct {
+	boolean active;
+	collection_t* items;
+	const char* title;
+	stacked_item_t* selected;
+} select_item_t;
 
 typedef struct 
 {
@@ -123,6 +131,7 @@ typedef struct
 {
 	player_t player;
 	level_t current_level;
+	select_item_t select_item;
 
 	arena_t* storage;
 	hashtable_t* items;

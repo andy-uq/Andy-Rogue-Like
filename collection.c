@@ -167,6 +167,41 @@ void* collection_get_at(collection_t* collection, uint index)
 	return p ? p->item : 0;
 }
 
+void* collection_next(collection_t* collection, void* item)
+{
+	collection_node_t* p = collection ? collection->head : 0;
+	while (p)
+	{
+		if (p->item == item)
+		{
+			p = p->next;
+			return p ? p->item : 0;
+		}
+
+		p = p->next;
+	}
+
+	return p ? p->item : 0;
+}
+
+void* collection_prev(collection_t* collection, void* item)
+{
+	collection_node_t* p = collection ? collection->head : 0;
+	void* tail = 0;
+	while (p)
+	{
+		if (p->item == item)
+		{
+			return tail;
+		}
+
+		tail = p->item;
+		p = p->next;
+	}
+
+	return 0;
+}
+
 int collection_count(collection_t* collection)
 {
 	return collection->count;
