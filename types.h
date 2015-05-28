@@ -14,6 +14,7 @@ typedef struct {
 typedef struct arena_t arena_t;
 typedef struct collection_node_t collection_node_t;
 typedef struct hashtable_t hashtable_t;
+typedef struct game_t game_t;
 
 struct collection_node_t
 {
@@ -43,6 +44,7 @@ typedef enum
 	GAME_ACTION_DROP,
 	GAME_ACTION_QUIT,
 	GAME_ACTION_CANCEL,
+	GAME_ACTION_OK,
 } GAME_ACTION;
 
 typedef struct {
@@ -82,7 +84,8 @@ typedef struct
 
 typedef struct {
 	boolean active;
-	collection_t* items;
+	collection_t* (*items)();
+	boolean(*confirm)(game_t* game, stacked_item_t* item);
 	const char* title;
 	stacked_item_t* selected;
 } select_item_t;
@@ -127,7 +130,7 @@ typedef struct
 	collection_t* mobs;
 } level_t;
 
-typedef struct
+typedef struct game_t
 {
 	player_t player;
 	level_t current_level;

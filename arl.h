@@ -25,6 +25,7 @@ void* collection_pop(collection_t* collection);
 void collection_remove(collection_t* collection, void* item);
 void* collection_new_item(collection_t* collection, size_t sizeofItem);
 void* collection_first(collection_t* collection);
+void* collection_single(collection_t* collection);
 boolean collection_any(collection_t* collection);
 void* collection_get_at(collection_t* collection, uint index);
 void* collection_next(collection_t* collection, void* item);
@@ -75,7 +76,7 @@ map_element_t* get_map_element(level_t* level, int x, int y);
 map_element_t* get_player_tile(level_t* level, player_t* player);
 element_type_t get_map_element_type(level_t* level, int x, int y);
 void drop_item(level_t* level, item_t* item, int x, int y);
-item_t* pickup_item(level_t* level, int x, int y);
+item_t* pickup_item(level_t* level, int x, int y, item_t* target);
 collection_t* items_on_floor(level_t* level, int x, int y);
 
 /* files */

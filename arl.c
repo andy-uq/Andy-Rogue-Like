@@ -4,7 +4,6 @@
 
 #include <stdio.h>
 #include <math.h>
-#include <string.h>
 #include <stdarg.h>
 
 v2i _screenSize = { 20, 10 };
@@ -211,7 +210,7 @@ update_and_render()
 		makeDark();
 		int y = 10;
 		draw_line((v2i){ 30, y++ }, _game.select_item.title);
-		foreach(stacked_item_t*, item, _game.select_item.items)
+		foreach(stacked_item_t*, item, _game.select_item.items())
 		{
 			if (item == _game.select_item.selected)
 				draw_char((v2i){ 27, y }, '>');
@@ -464,90 +463,167 @@ boolean _move_player(game_t* game, const game_input_t input)
 	return true;
 }
 
-void _pickup_item(player_t* player, level_t* level)
+internal
+collection_t* _player_inventory()
 {
-	item_t* item = pickup_item(level, player->position.x, player->position.y);
+	return _game.player.inventory;
+}
+
+internal
+collection_t* _items_on_floor_at_player_location()
+{
+	player_t* player = &_game.player;
+	return items_on_floor(&_game.current_level, player->position.x, player->position.y);
+}
+
+internal
+boolean _has_selection(select_item_t* select, collection_t* (*items)())
+{
+	return select->active && select->selected && select->items == items;
+}
+
+internal
+void _begin_item_select(select_item_t* select, collection_t* (*items)(), boolean(*confirm)(game_t* game, stacked_item_t* item), const char* title)
+{
+	select->active = true;
+	select->items = items;
+	select->confirm = confirm;
+	select->title = title;
+	select->selected = collection_first(items());
+}
+
+internal _pickup_item(player_t* player, level_t* level, item_t* item)
+{
+	item = pickup_item(level, player->position.x, player->position.y, item);
 	if (item)
 	{
 		stacked_add(player->inventory, item);
 		statusf("Picked up %s", item->name);
 	}
-	else
-	{
-		statusf("There is nothing here");
-	}
-}
-
-void _drop_item(player_t* player, level_t* level, item_t* item)
-{
-	foreach(stacked_item_t*, i, player->inventory)
-	{
-		if (i->item == item)
-		{
-			item_t* item = stacked_remove(player->inventory, i);
-			drop_item(level, item, player->position.x, player->position.y);
-			statusf("Dropped %s", item->name);
-		}
-	}
-	
-	statusf("There is nothing to drop");
 }
 
 internal
-void _begin_item_select(select_item_t* select, collection_t* items, const char* title)
+boolean _drop_item(player_t* player, level_t* level, item_t* target)
 {
-	select->active = true;
-	select->items = items;
-	select->title = title;
-	select->selected = collection_first(items);
+	foreach(stacked_item_t*, stacked, player->inventory)
+	{
+		if (stacked->item == target)
+		{
+			item_t* item = stacked_remove(player->inventory, stacked);
+			drop_item(level, item, player->position.x, player->position.y);
+			statusf("Dropped %s", item->name);
+			return true;
+		}
+	}
+	
+	return false;
+}
+
+internal
+boolean _end_pickup_item(game_t* game, stacked_item_t* selected)
+{
+	return _pickup_item(&game->player, &game->current_level, selected->item);
+}
+
+internal
+boolean _begin_pickup_item(game_t* game)
+{
+	player_t* player = &game->player;
+	level_t* level = &game->current_level;
+	collection_t* itemsOnFloor = items_on_floor(level, player->position.x, player->position.y);
+
+	if (!itemsOnFloor)
+	{
+		statusf("There is nothing here");
+		return false;
+	}
+
+	stacked_item_t* single = collection_single(itemsOnFloor);
+	if (single)
+	{
+		_pickup_item(player, level, single->item);
+		return true;
+	}
+
+	_begin_item_select(&game->select_item, _items_on_floor_at_player_location, _end_pickup_item, "SELECT ITEM TO PICK UP");
+	return false;
+}
+
+internal
+boolean _end_drop_item(game_t* game, stacked_item_t* selected)
+{
+	return _drop_item(&game->player, &game->current_level, selected->item);
+}
+
+internal
+boolean _begin_drop_item(game_t* game)
+{
+	collection_t* inventory = game->player.inventory;
+	if (!collection_any(inventory))
+	{
+		statusf("There is nothing to drop");
+		return false;
+	}
+
+	stacked_item_t* single = collection_single(inventory);
+	if (single)
+	{
+		return _drop_item(&game->player, &game->current_level, single->item);
+	}
+
+	_begin_item_select(&game->select_item, _player_inventory, _end_drop_item, "SELECT ITEM TO DROP");
+	return false;
+}
+
+internal
+boolean _process_item_dialog(game_t* game, game_input_t input)
+{
+	GAME_ACTION action = input.action;
+	switch (action)
+	{
+	case GAME_ACTION_OK:
+	{
+		game->select_item.active = false;
+		return game->select_item.confirm(game, game->select_item.selected);
+	}
+	case GAME_ACTION_CANCEL:
+	{
+		game->select_item.active = false;
+		return false;
+	}
+	}
+
+	stacked_item_t* next = 0;
+	if (input.y_offset > 0)
+	{
+		next = collection_next(game->select_item.items(), game->select_item.selected);
+	}
+	else if (input.y_offset < 0)
+	{
+		next = collection_prev(game->select_item.items(), game->select_item.selected);
+	}
+
+	if (next)
+	{
+		game->select_item.selected = next;
+	}
+
+	return false;
 }
 
 internal
 boolean _perform_action(game_t* game, game_input_t input)
 {
 	GAME_ACTION action = input.action;
-	if (action == GAME_ACTION_NONE)
-		return false;
-
 	switch (action)
 	{
-	case GAME_ACTION_PICKUP:
-	{
-		_pickup_item(&game->player, &game->current_level);
-		return true;
-	}
-	case GAME_ACTION_DROP:
-	{
-		if (game->select_item.selected) {
-			_drop_item(&game->player, &game->current_level, game->select_item.selected->item);
-			game->select_item.active = false;
-		}
-		else {
-			_begin_item_select(&game->select_item, game->player.inventory, "SELECT ITEM TO DROP");
-			return false;
-		}
-		return true;
-	}
-	case GAME_ACTION_CANCEL:
-		game->select_item.active = false;
-		return false;
-	}
-
-	if (game->select_item.active)
-	{
-		stacked_item_t* next = 0;
-		if (input.y_offset > 0) 
+		case GAME_ACTION_PICKUP:
 		{
-			next = collection_next(game->select_item.items, game->select_item.selected);
+			return _begin_pickup_item(game);
 		}
-		else if (input.y_offset < 0)
+		case GAME_ACTION_DROP:
 		{
-			next = collection_prev(game->select_item.items, game->select_item.selected);
-		}
-		if (next)
-		{
-			game->select_item.selected = next;
-			return false;
+			return _begin_drop_item(game);
 		}
 	}
 
@@ -559,7 +635,16 @@ void process_input(const game_input_t input)
 	if (input.action == GAME_ACTION_QUIT)
 		return;
 
-	boolean actionTaken = _move_player(&_game, input) | _perform_action(&_game, input);
+	boolean actionTaken;
+	if (_game.select_item.active)
+	{
+		actionTaken = _process_item_dialog(&_game, input);
+	}
+	else
+	{
+		actionTaken = _move_player(&_game, input) | _perform_action(&_game, input);
+	}
+
 	if (actionTaken)
 	{
 		moveMobs(&_game);

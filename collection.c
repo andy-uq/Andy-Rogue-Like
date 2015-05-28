@@ -103,6 +103,12 @@ void* collection_first(collection_t* collection)
 	return p ? p->item : p;
 }
 
+void* collection_single(collection_t* collection)
+{
+	collection_node_t* p = collection ? collection->head : 0;
+	return p && !p->next ? p->item : 0;
+}
+
 void* collection_pop(collection_t* collection)
 {
 	if (collection && collection->head)

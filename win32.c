@@ -131,6 +131,14 @@ game_input_t* KeyEventProc(KEY_EVENT_RECORD ker, game_input_t* input)
 			input->x_offset = +1;
 			break;
 
+		case VK_ESCAPE:
+			input->action = GAME_ACTION_CANCEL;
+			break;
+
+		case VK_RETURN:
+			input->action = GAME_ACTION_OK;
+			break;
+
 		case 'Q':
 			_alive = false;
 			input->action = GAME_ACTION_QUIT;

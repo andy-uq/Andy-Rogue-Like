@@ -22,13 +22,18 @@ void drop_item(level_t* level, item_t* item, int x, int y)
 	stacked_add(itemsOnFloor, item);
 }
 
-item_t* pickup_item(level_t* level, int x, int y)
+item_t* pickup_item(level_t* level, int x, int y, item_t* target)
 {
 	collection_t* itemsOnFloor = items_on_floor(level, x, y);
 	if (itemsOnFloor)
 	{
-		stacked_item_t* item = collection_first(itemsOnFloor);
-		return stacked_remove(itemsOnFloor, item);
+		foreach(stacked_item_t*, i, itemsOnFloor)
+		{
+			if (i->item == target)
+			{
+				return stacked_remove(itemsOnFloor, i);
+			}
+		}
 	}
 
 	return 0;
