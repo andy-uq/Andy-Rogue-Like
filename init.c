@@ -221,10 +221,12 @@ void init_game_struct(game_t* game)
 
 	player_init(&game->player);
 	items_init(game);
+	messages_init(game);
 
 	level_t* level = &game->current_level;
 	level->filename = "level01.txt";
 	read_level(game, level);
 
 	load_game(game);
+
 }

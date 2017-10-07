@@ -6,6 +6,8 @@
 #include <math.h>
 #include <stdarg.h>
 
+#define MAX_STATUS_STRING 80
+
 v2i _screenSize = { 20, 10 };
 game_t _game = {0};
 char* _statusMessage = 0;
@@ -19,12 +21,12 @@ v2i _to_screen_coord(v2i pos)
 	return (v2i){ pos.x + xOffset, pos.y + yOffset };
 }
 
-void statusf(char* format, ...)
+void statusf(const char* format, ...)
 {
 	va_list argp;
 	va_start(argp, format);
-	_statusMessage = (char*)transient_alloc(512);
-	vsprintf_s(_statusMessage, 512, format, argp);
+	_statusMessage = (char*)transient_alloc(MAX_STATUS_STRING);
+	vsprintf_s(_statusMessage, MAX_STATUS_STRING, format, argp);
 	debug(_statusMessage);
 	va_end(argp);
 }
@@ -218,6 +220,18 @@ update_and_render()
 			_render_item(item, 30, y++);
 		}
 	}
+
+	message_iterator_t iterator = {0};
+	message_t* message = iterate_message(&_game.messages, &iterator);
+	int line = 24;
+	while (message)
+	{
+		draw_line((v2i) { 0, line }, message->message);
+		message = iterate_message(&_game.messages, &iterator);
+		line--;
+		if (line == 19)
+			break;
+	}
 }
 
 #define abs(x) ((x) > 0 ? (x) : -(x))
@@ -400,7 +414,7 @@ int openDoor(level_t* level, v2i pos)
 }
 
 internal
-boolean bump(player_t* player, v2i pos, collection_t* mobs)
+boolean bump(player_t* player, v2i pos, collection_t* mobs, messages_t* messages)
 {
 	int monsterId = 0;
 	foreach (monster_t*, m, mobs)
@@ -424,7 +438,7 @@ boolean bump(player_t* player, v2i pos, collection_t* mobs)
 			}
 			else
 			{
-				statusf("Killed monster %d", monsterId);
+				messagef(messages, "Killed monster %d", monsterId);
 			}
 		}
 
@@ -453,7 +467,7 @@ boolean _move_player(game_t* game, const game_input_t input)
 			openDoor(&game->current_level, newPos);
 			break;
 		default:
-			if (!bump(&game->player, newPos, game->current_level.mobs))
+			if (!bump(&game->player, newPos, game->current_level.mobs, &game->messages))
 			{
 				game->player.position = newPos;
 			}
@@ -492,18 +506,21 @@ void _begin_item_select(select_item_t* select, collection_t* (*items)(), boolean
 	select->selected = collection_first(items());
 }
 
-internal _pickup_item(player_t* player, level_t* level, item_t* item)
+internal 
+boolean _pickup_item(player_t* player, level_t* level, item_t* item, messages_t* messages)
 {
 	item = pickup_item(level, player->position.x, player->position.y, item);
 	if (item)
 	{
 		stacked_add(player->inventory, item);
-		statusf("Picked up %s", item->name);
+		messagef(messages, "Picked up %s", item->name);
+		return true;
 	}
+	return false;
 }
 
 internal
-boolean _drop_item(player_t* player, level_t* level, item_t* target)
+boolean _drop_item(player_t* player, level_t* level, item_t* target, messages_t* messages)
 {
 	foreach(stacked_item_t*, stacked, player->inventory)
 	{
@@ -511,7 +528,7 @@ boolean _drop_item(player_t* player, level_t* level, item_t* target)
 		{
 			item_t* item = stacked_remove(player->inventory, stacked);
 			drop_item(level, item, player->position.x, player->position.y);
-			statusf("Dropped %s", item->name);
+			messagef(messages, "Dropped %s", item->name);
 			return true;
 		}
 	}
@@ -522,7 +539,7 @@ boolean _drop_item(player_t* player, level_t* level, item_t* target)
 internal
 boolean _end_pickup_item(game_t* game, stacked_item_t* selected)
 {
-	return _pickup_item(&game->player, &game->current_level, selected->item);
+	return _pickup_item(&game->player, &game->current_level, selected->item, &game->messages);
 }
 
 internal
@@ -541,7 +558,7 @@ boolean _begin_pickup_item(game_t* game)
 	stacked_item_t* single = collection_single(itemsOnFloor);
 	if (single)
 	{
-		_pickup_item(player, level, single->item);
+		_pickup_item(player, level, single->item, &game->messages);
 		return true;
 	}
 
@@ -552,7 +569,7 @@ boolean _begin_pickup_item(game_t* game)
 internal
 boolean _end_drop_item(game_t* game, stacked_item_t* selected)
 {
-	return _drop_item(&game->player, &game->current_level, selected->item);
+	return _drop_item(&game->player, &game->current_level, selected->item, &game->messages);
 }
 
 internal
@@ -568,7 +585,7 @@ boolean _begin_drop_item(game_t* game)
 	stacked_item_t* single = collection_single(inventory);
 	if (single)
 	{
-		return _drop_item(&game->player, &game->current_level, single->item);
+		return _drop_item(&game->player, &game->current_level, single->item, &game->messages);
 	}
 
 	_begin_item_select(&game->select_item, _player_inventory, _end_drop_item, "SELECT ITEM TO DROP");

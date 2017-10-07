@@ -257,7 +257,6 @@ hashtable_t* hashtable_from_arena(arena_t* arena, int capacity, int keySize)
 {
 	hashtable_t* hashtable = arena_alloc(&hashtables, sizeof(hashtable_t));
 
-	size_t size = capacity*(sizeof(void*) + keySize + 1);
 	hashtable->hash = _key_hash_binary;
 	hashtable->match = _key_match_binary;
 	hashtable->key_size = keySize;

@@ -82,3 +82,8 @@ collection_t* items_on_floor(level_t* level, int x, int y);
 /* files */
 boolean parse_value_if_match(char* buffer, const char* key, char** value);
 void parse_key_value(char* line, char** key, char** value);
+
+/* messages */
+void messages_init(game_t* game);
+void messagef(messages_t* messages, const char* format, ...);
+message_t* iterate_message(const messages_t* messages, message_iterator_t* iterator);

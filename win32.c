@@ -210,10 +210,16 @@ int win32_close()
 	return SetConsoleActiveScreenBuffer(_hStdout);
 }
 
-void 
-draw_to_buffer(const char *text)
+
+void makeDark()
 {
-	if (!text)
+	DWORD write;
+	FillConsoleOutputAttribute(_hBackBuffer, 0x08, 80 * 25, (COORD) { 0 }, &write);
+}
+
+void draw_to_buffer(const char *text)
+{
+	if (!text || !text[0])
 		return;
 
 	COORD coordBufCoord = {0}, coordBufSize = { 80, 2 };
@@ -237,17 +243,9 @@ draw_to_buffer(const char *text)
 		&srctWriteRect);	// dest. screen textBuffer rectangle 
 }
 
-
-void makeDark()
+void draw_line(const v2i pos, const char *text)
 {
-	DWORD write;
-	FillConsoleOutputAttribute(_hBackBuffer, 0x08, 80 * 25, (COORD){ 0 }, &write);
-}
-
-void 
-draw_line(const v2i pos, const char *text)
-{
-	if (!text)
+	if (!text || !text[0])
 		return;
 
 	CHAR_INFO textBuffer[80]; 
@@ -272,8 +270,7 @@ draw_line(const v2i pos, const char *text)
 		&writeRect);	// dest. screen textBuffer rectangle 
 }
 
-void
-drawf_line(const v2i pos, const char *format, ...)
+void drawf_line(const v2i pos, const char *format, ...)
 {
 	char buffer[80];
 	va_list argp;
@@ -283,8 +280,7 @@ drawf_line(const v2i pos, const char *format, ...)
 	va_end(argp);
 }
 
-void
-draw_char(const v2i pos, const char c)
+void draw_char(const v2i pos, const char c)
 {
 	CHAR_INFO chiBuffer = {0};
 	chiBuffer.Attributes = 0x07;
@@ -299,8 +295,7 @@ draw_char(const v2i pos, const char c)
 		&writeRect);
 }
 
-int
-file_open_for_write(const char* filename, file_t** file)
+int file_open_for_write(const char* filename, file_t** file)
 {
 	FILE* fs;
 	if (fopen_s(&fs, filename, "wb"))
@@ -315,8 +310,7 @@ file_open_for_write(const char* filename, file_t** file)
 	return 1;
 }
 
-int
-file_open_for_read(const char* filename, file_t** file)
+int file_open_for_read(const char* filename, file_t** file)
 {
 	FILE* fs;
 	if (fopen_s(&fs, filename, "rb"))
@@ -336,23 +330,20 @@ file_open_for_read(const char* filename, file_t** file)
 	return 1;
 }
 
-void
-file_write(const file_t* file, const char* line)
+void file_write(const file_t* file, const char* line)
 {
 	win32_file_t* win32_file = (win32_file_t*)file;
 	int bytes = fputs(line, win32_file->fs);
 	win32_file->fileInfo.size += bytes;
 }
 
-char* 
-file_read(const file_t* file)
+char* file_read(const file_t* file)
 {
 	win32_file_t* win32_file = (win32_file_t*)file;
 	return fgets(win32_file->buffer, READBUFFERSIZE, win32_file->fs);
 }
 
-long
-file_seek(const file_t* file, long offset)
+long file_seek(const file_t* file, long offset)
 {
 	win32_file_t* win32_file = (win32_file_t*)file;
 	if (offset < 0)
@@ -363,8 +354,7 @@ file_seek(const file_t* file, long offset)
 	return fseek(win32_file->fs, offset, SEEK_SET);
 }
 
-void 
-file_free(const file_t* file) 
+void file_free(const file_t* file) 
 {
 	if (file)
 	{
@@ -373,8 +363,7 @@ file_free(const file_t* file)
 	}
 }
 
-int 
-_tmain()
+int _tmain()
 {
 	if (win32_init())
 		return 1;
@@ -385,15 +374,21 @@ _tmain()
 	init_game();
 
 	_alive = true;
+
+	beginRender();
+	update_and_render();
+	renderComplete();
+
 	while (_alive)
 	{
 		transient_reset();
-		beginRender();
-		update_and_render();
-		renderComplete();
 
 		game_input_t input = readInput();
 		process_input(input);
+
+		beginRender();
+		update_and_render();
+		renderComplete();
 	}
 
 	win32_close();

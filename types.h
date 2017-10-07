@@ -52,6 +52,21 @@ typedef struct {
 	GAME_ACTION action;
 } game_input_t;
 
+typedef struct message_t {
+	char* message;
+} message_t;
+
+typedef struct messages_t {
+	message_t* list;
+	int head;
+	int insertIndex;
+} messages_t;
+
+typedef struct message_iterator_t
+{
+	int index;
+} message_iterator_t;
+
 typedef enum {
 	FLOOR,
 	WALL,
@@ -135,6 +150,7 @@ typedef struct game_t
 	player_t player;
 	level_t current_level;
 	select_item_t select_item;
+	messages_t messages;
 
 	arena_t* storage;
 	hashtable_t* items;
