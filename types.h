@@ -14,6 +14,7 @@ typedef struct {
 typedef struct arena_t arena_t;
 typedef struct collection_node_t collection_node_t;
 typedef struct hashtable_t hashtable_t;
+typedef struct stringtable_t stringtable_t;
 typedef struct game_t game_t;
 
 struct collection_node_t
@@ -105,8 +106,33 @@ typedef struct {
 	stacked_item_t* selected;
 } select_item_t;
 
-typedef struct 
+typedef struct
 {
+	int min;
+	int max;
+} int_range_t;
+
+typedef struct
+{
+	int id;
+
+	char* name;
+	char* description;
+	
+	int_range_t level;
+	int_range_t speed;
+
+	int_range_t energy;
+	int_range_t hp;
+	int_range_t attack;
+	int_range_t defense;
+	int_range_t damage;
+} monster_info_t;
+
+typedef struct
+{
+	monster_info_t* info;
+
 	char glyph;
 	v2i position;
 	v2i target;
@@ -149,7 +175,7 @@ typedef struct game_t
 {
 	player_t player;
 	level_t current_level;
-	select_item_t select_item;
+	select_item_t select_item; // current dialog being selected from
 	messages_t messages;
 
 	arena_t* storage;

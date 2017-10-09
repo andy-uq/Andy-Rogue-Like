@@ -17,6 +17,9 @@ hashtable_t* create_hashtable(int capacity, int keySize);
 hashtable_t* create_int_hashtable(int capacity);
 hashtable_t* hashtable_from_arena(arena_t* arena, int capacity, int keySize);
 
+const char* stringtable_add(stringtable_t* table, const char* string);
+const stringtable_t* init_stringtable(int capacity);
+
 collection_t* transient_collection(size_t initialSize, size_t itemSize);
 collection_t* collection_from_arena(arena_t** arena);
 collection_t* create_collection(size_t initialSize, size_t itemSize);

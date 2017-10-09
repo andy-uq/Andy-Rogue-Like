@@ -6,6 +6,14 @@
 
 #define HASH_MAX_COLLISIONS 10
 
+struct stringtable_t
+{
+	arena_t* storage;
+	char** table;
+	int count;
+	int available;
+};
+
 struct hashtable_t
 {
 	uint(*hash)(void* key, int keySize);
@@ -18,8 +26,46 @@ struct hashtable_t
 	int count;
 };
 
+arena_t* stringtables = NULL;
 arena_t* hashtables = NULL;
 arena_t* collections = NULL;
+
+const char* stringtable_add(stringtable_t* table, const char* string)
+{
+	if (!table->available) 
+	{
+		stringtable_resize(table, table->count * 2);
+	}
+
+	int count = table->count;
+	int length = strlen_s(string);
+
+	const char* ptr = arena_alloc(&stringtables, length + 1);
+	strcpy_s(ptr, length, string);
+
+	table->table[count] = ptr;
+	table->count = count + 1;
+	table->available = 0;
+	
+	return ptr;
+}
+
+const stringtable_t* init_stringtable(int capacity)
+{
+	stringtable_t* table = arena_alloc(&stringtables, sizeof(stringtable_t));
+	table->available = capacity;
+	table->count = 0;
+	table->table = arena_alloc(&stringtables, sizeof(char*) * capacity);
+
+	char* ptr = table->table;
+	for (int i = 0; i < capacity; i++)
+	{
+		*ptr = 0;
+		ptr++;
+	}
+
+	return table;
+}
 
 collection_t* transient_collection(size_t initialSize, size_t itemSize)
 {

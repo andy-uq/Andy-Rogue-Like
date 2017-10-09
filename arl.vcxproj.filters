@@ -13,9 +13,27 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Data Files">
+      <UniqueIdentifier>{daee4eed-3132-4ba6-abcb-cc6856db7a68}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.md" />
+    <Text Include="item01.txt">
+      <Filter>Data Files</Filter>
+    </Text>
+    <Text Include="items.txt">
+      <Filter>Data Files</Filter>
+    </Text>
+    <Text Include="level01.txt">
+      <Filter>Data Files</Filter>
+    </Text>
+    <Text Include="map01.txt">
+      <Filter>Data Files</Filter>
+    </Text>
+    <Text Include="monster01.txt">
+      <Filter>Data Files</Filter>
+    </Text>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="arl.c">
@@ -58,6 +76,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="messages.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="loadmonsterinfo.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="stringtable.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

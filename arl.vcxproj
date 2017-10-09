@@ -83,6 +83,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <Text Include="item01.txt" />
+    <Text Include="items.txt" />
+    <Text Include="level01.txt" />
+    <Text Include="map01.txt" />
+    <Text Include="monster01.txt" />
     <Text Include="ReadMe.md" />
   </ItemGroup>
   <ItemGroup>
@@ -93,12 +98,14 @@
     <ClCompile Include="inventory.c" />
     <ClCompile Include="loadgame.c" />
     <ClCompile Include="loadmonster.c" />
+    <ClCompile Include="loadmonsterinfo.c" />
     <ClCompile Include="map.c" />
     <ClCompile Include="memory.c" />
     <ClCompile Include="random.c" />
     <ClCompile Include="savegame.c" />
     <ClCompile Include="messages.c" />
     <ClCompile Include="string.c" />
+    <ClCompile Include="stringtable.c" />
     <ClCompile Include="win32.c" />
   </ItemGroup>
   <ItemGroup>
